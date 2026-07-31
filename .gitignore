@@ -63,5 +63,9 @@ test-results/
 playwright-report/
 blob-report/
 
+# Vercel
+.vercel/
+.vercel_build_output/
+
 # Temp
 temp/*

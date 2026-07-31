@@ -1,0 +1,55 @@
+name: Deploy Web App to Vercel
+
+on:
+  push:
+    branches:
+      - main
+      paths:
+        - 'apps/web/**'
+        - '.github/workflows/vercel-deploy.yml'
+  workflow_dispatch:
+    inputs:
+      vercel_flags:
+        description: 'Vercel CLI flags (e.g., --prod)'
+        required: false
+        default: '--prod'
+
+env:
+  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'pnpm'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: '9.1'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build web app
+        run: pnpm --filter @secureauthx/web build
+        working-directory: apps/web
+
+      - name: Deploy to Vercel
+        uses: amondnet/vercel-action@v30
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ env.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ env.VERCEL_PROJECT_ID }}
+          vercel-args: ${{ inputs.vercel_flags || '--prod' }}
+          working-directory: apps/web
+          scope: ${{ secrets.VERCEL_SCOPE }}
