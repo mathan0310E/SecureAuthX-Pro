@@ -22,6 +22,27 @@ export const SECURITY = {
   MAX_DEVICES_PER_USER: 10,
 } as const;
 
+export const MFA = {
+  /** Time-to-live for a pending second-factor challenge, in seconds. */
+  CHALLENGE_TTL: 600,
+  /** How many one-time recovery codes are handed out at enrollment. */
+  RECOVERY_CODES_COUNT: 10,
+  /** Byte length of each recovery code's random value. */
+  RECOVERY_CODE_BYTES: 10,
+  /** TOTP issuer shown in authenticator apps. */
+  TOTP_ISSUER: 'SecureAuthX Pro',
+  /** TOTP time step in seconds (RFC 6238 default). */
+  TOTP_STEP_SECONDS: 30,
+  /** TOTP code length. */
+  TOTP_DIGITS: 6,
+  /** Acceptable clock-drift window (number of 30s steps). */
+  TOTP_DRIFT_STEPS: 1,
+  /** Max WebAuthn credentials registered per user. */
+  MAX_WEBAUTHN_CREDENTIALS: 10,
+  /** Trusted-device cookie lifetime in seconds (default 30 days). */
+  TRUSTED_DEVICE_TTL: 2592000,
+} as const;
+
 export const TOKEN_TTL = {
   /** JWT access token lifetime in seconds (15 min). */
   ACCESS: 900,
@@ -31,6 +52,8 @@ export const TOKEN_TTL = {
   EMAIL_VERIFICATION: 86400,
   /** Password reset token lifetime in seconds (15 min). */
   PASSWORD_RESET: 900,
+  /** Pending MFA challenge lifetime in seconds (10 min). */
+  MFA_CHALLENGE: 600,
   /** Session idle timeout in seconds (30 min). */
   SESSION_IDLE: 1800,
   /** Absolute session lifetime in seconds (60 min). */
@@ -41,6 +64,8 @@ export const COOKIE_NAMES = {
   ACCESS_TOKEN: 'sax_access_token',
   REFRESH_TOKEN: 'sax_refresh_token',
   CSRF: 'sax_csrf',
+  MFA_CHALLENGE: 'sax_mfa_challenge',
+  TRUSTED_DEVICE: 'sax_trusted_device',
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -71,6 +96,10 @@ export const AUDIT_ACTION = {
   WEBAUTHN_REGISTERED: 'mfa.webauthn_registered',
   WEBAUTHN_REMOVED: 'mfa.webauthn_removed',
   RECOVERY_CODES_GENERATED: 'mfa.recovery_codes_generated',
+  RECOVERY_CODE_USED: 'mfa.recovery_code_used',
+  MFA_LOGIN_VERIFIED: 'mfa.login_verified',
+  MFA_LOGIN_FAILED: 'mfa.login_failed',
+  MFA_CHALLENGE_ISSUED: 'mfa.challenge_issued',
   // Devices & Sessions
   DEVICE_TRUSTED: 'device.trusted',
   DEVICE_REVOKED: 'device.revoked',

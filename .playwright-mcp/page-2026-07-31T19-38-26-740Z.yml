@@ -1,0 +1,35 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - link "SecureAuthX Pro" [ref=e4] [cursor=pointer]:
+        - /url: /
+      - button "Toggle color scheme" [ref=e10]
+    - main [ref=e12]:
+      - generic [ref=e13]:
+        - generic [ref=e14]:
+          - heading "Welcome back" [level=1] [ref=e15]
+          - paragraph [ref=e16]: Sign in to your SecureAuthX Pro account.
+        - generic [ref=e19]:
+          - alert [ref=e48]:
+            - generic [ref=e51]: Something went wrong. Please try again in a moment.
+          - generic [ref=e20]:
+            - generic [ref=e21]: Email
+            - textbox "Email" [ref=e23]:
+              - /placeholder: you@company.com
+              - text: admin@secureauthx.local
+          - generic [ref=e24]:
+            - generic [ref=e25]: Password
+            - textbox "Password" [ref=e26]:
+              - /placeholder: ••••••••••••
+              - text: change-me-admin-password-123
+          - generic [ref=e27] [cursor=pointer]:
+            - checkbox "Keep me signed in" [ref=e28]
+            - text: Keep me signed in
+          - button "Sign in" [ref=e29]
+        - paragraph [ref=e30]:
+          - text: Don't have an account?
+          - link "Create one" [ref=e31] [cursor=pointer]:
+            - /url: /register
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e43] [cursor=pointer]
+  - alert [ref=e47]

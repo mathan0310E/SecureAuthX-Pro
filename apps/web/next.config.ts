@@ -10,6 +10,7 @@ const apiUrl = process.env.API_URL ?? 'http://localhost:4000';
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  devIndicators: false,
   eslint: {
     ignoreDuringBuilds: false,
   },

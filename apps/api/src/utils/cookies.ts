@@ -52,4 +52,34 @@ export function clearAuthCookies(res: Response): void {
   res.clearCookie(COOKIE_NAMES.ACCESS_TOKEN, base);
   res.clearCookie(COOKIE_NAMES.REFRESH_TOKEN, base);
   res.clearCookie(COOKIE_NAMES.CSRF, { ...base, httpOnly: false });
+  res.clearCookie(COOKIE_NAMES.MFA_CHALLENGE, base);
+}
+
+/**
+ * Binds a pending MFA challenge to the browser so a challenge issued to one
+ * client cannot be completed from another.
+ */
+export function setMfaChallengeCookie(res: Response, challengeId: string, ttlSeconds: number): void {
+  res.cookie(
+    COOKIE_NAMES.MFA_CHALLENGE,
+    challengeId,
+    cookieOptions({ maxAgeMs: ttlSeconds * 1000, httpOnly: true })
+  );
+}
+
+export function clearMfaChallengeCookie(res: Response): void {
+  res.clearCookie(COOKIE_NAMES.MFA_CHALLENGE, cookieOptions({ maxAgeMs: 0, httpOnly: true }));
+}
+
+/** Marks the device as trusted so later logins skip the second factor. */
+export function setTrustedDeviceCookie(res: Response, token: string, ttlSeconds: number): void {
+  res.cookie(
+    COOKIE_NAMES.TRUSTED_DEVICE,
+    token,
+    cookieOptions({ maxAgeMs: ttlSeconds * 1000, httpOnly: true })
+  );
+}
+
+export function clearTrustedDeviceCookie(res: Response): void {
+  res.clearCookie(COOKIE_NAMES.TRUSTED_DEVICE, cookieOptions({ maxAgeMs: 0, httpOnly: true }));
 }

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowRight, LayoutDashboard, LogOut } from 'lucide-react';
+import { ArrowRight, LayoutDashboard, LogOut, ScrollText, ShieldCheck, Users } from 'lucide-react';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { useAuth } from '@/components/providers/auth-provider';
 import { cn } from '@/lib/utils';
@@ -34,6 +34,29 @@ export function AuthNav({ className }: { className?: string }) {
           <LayoutDashboard className="size-3.5" aria-hidden="true" />
           Dashboard
         </Link>
+        <Link
+          href="/security"
+          className="inline-flex items-center gap-1.5 rounded-lg border px-3.5 py-1.5 text-sm font-medium transition-colors hover:bg-accent"
+        >
+          <ShieldCheck className="size-3.5" aria-hidden="true" />
+          Security
+        </Link>
+        <Link
+          href="/security/activity"
+          className="inline-flex items-center gap-1.5 rounded-lg border px-3.5 py-1.5 text-sm font-medium transition-colors hover:bg-accent"
+        >
+          <ScrollText className="size-3.5" aria-hidden="true" />
+          Activity
+        </Link>
+        {user.role === 'ADMIN' && (
+          <Link
+            href="/admin"
+            className="inline-flex items-center gap-1.5 rounded-lg border px-3.5 py-1.5 text-sm font-medium transition-colors hover:bg-accent"
+          >
+            <Users className="size-3.5" aria-hidden="true" />
+            Admin
+          </Link>
+        )}
         <button
           type="button"
           onClick={async () => {

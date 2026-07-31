@@ -12,7 +12,8 @@ import {
 } from '@secureauthx/shared';
 import { AUDIT_ACTION, COOKIE_NAMES, SECURITY_EVENT_TYPE } from '@secureauthx/config';
 import { resolveAccessToken } from '../middlewares/authenticate';
-import type { AuthTokens, AuthUser, LoginResponseData, RefreshResponseData, RegisterResponseData, ResendVerificationResponseData, VerifyEmailResponseData } from '@secureauthx/types';
+import type { AuthTokens, AuthUser, LoginResponseData, MfaLoginResponseData, RefreshResponseData, RegisterResponseData, ResendVerificationResponseData, VerifyEmailResponseData } from '@secureauthx/types';
+import type { PublicKeyCredentialRequestOptionsJSON } from '@simplewebauthn/server';
 import type { JwtService } from '@secureauthx/security';
 import type { PasswordService } from '@secureauthx/auth';
 import type { MailService } from '@secureauthx/mail';
@@ -26,6 +27,7 @@ import type {
 import { AppError, Errors } from '../utils/errors';
 import { env } from '../config/env';
 import { logger } from '../config/logger';
+import type { MfaService } from './mfa.service';
 
 interface AuthServiceDeps {
   prisma: PrismaClient;
@@ -36,6 +38,7 @@ interface AuthServiceDeps {
   sessions: SessionRepository;
   emailVerifications: EmailVerificationRepository;
   audits: AuditRepository;
+  mfa: MfaService;
 }
 
 type UserLike = {
@@ -63,6 +66,13 @@ function toAuthUser(user: UserLike): AuthUser {
     createdAt: user.createdAt.toISOString(),
     lastLoginAt: user.lastLoginAt ? user.lastLoginAt.toISOString() : null,
   };
+}
+
+/** Result of a completed second-factor challenge: tokens + optional trusted-device cookie value. */
+export interface MfaLoginCompletion {
+  user: AuthUser;
+  tokens: AuthTokens;
+  deviceToken: string | null;
 }
 
 /**
@@ -198,7 +208,7 @@ export class AuthService {
   async login(
     input: { email: string; password: string; rememberMe?: boolean },
     req: Request
-  ): Promise<LoginResponseData> {
+  ): Promise<LoginResponseData | MfaLoginResponseData> {
     const { email, password, rememberMe = false } = input;
     const ip = getClientIp(req);
     const userAgent = getUserAgent(req);
@@ -276,11 +286,102 @@ export class AuthService {
     }
 
     await this.deps.users.markLoginSuccess(user.id, ip);
+
+    if (user.mfaEnabled) {
+      const trusted = await this.deps.mfa.isDeviceTrusted(user.id, req);
+      if (trusted) {
+        const tokens = await this.issueTokens(user, { ip, userAgent }, rememberMe);
+        await this.deps.audits.log(user.id, AUDIT_ACTION.LOGIN_SUCCESS, 'INFO', req, { rememberMe });
+        return { user: toAuthUser(user), tokens };
+      }
+
+      const challenge = await this.deps.mfa.issueLoginChallenge(user.id, rememberMe);
+      await this.deps.audits.log(user.id, AUDIT_ACTION.MFA_CHALLENGE_ISSUED, 'INFO', req, {
+        method: challenge.method,
+      });
+      return { challenge };
+    }
+
     const tokens = await this.issueTokens(user, { ip, userAgent }, rememberMe);
 
     await this.deps.audits.log(user.id, AUDIT_ACTION.LOGIN_SUCCESS, 'INFO', req, { rememberMe });
 
     return { user: toAuthUser(user), tokens };
+  }
+
+  // ---------------------------------------------------------------------------
+  // MFA login completion
+  // ---------------------------------------------------------------------------
+
+  /** Completes a TOTP-challenged login and issues the session tokens. */
+  async completeMfaTotp(
+    input: { challengeId: string; code: string; rememberDevice: boolean },
+    req: Request
+  ): Promise<MfaLoginCompletion> {
+    const { userId, deviceToken } = await this.deps.mfa.verifyTotpLogin(
+      input.challengeId,
+      input.code,
+      input.rememberDevice,
+      req
+    );
+    return this.finishMfaLogin(userId, req, deviceToken);
+  }
+
+  /** Completes a recovery-code-challenged login. */
+  async completeMfaRecovery(
+    input: { challengeId: string; code: string },
+    req: Request
+  ): Promise<MfaLoginCompletion> {
+    const userId = await this.deps.mfa.verifyRecoveryLogin(input.challengeId, input.code, req);
+    return this.finishMfaLogin(userId, req, null);
+  }
+
+  /** Starts the WebAuthn assertion ceremony for a pending challenge. */
+  async beginWebAuthnMfaLogin(
+    challengeId: string
+  ): Promise<{ options: PublicKeyCredentialRequestOptionsJSON }> {
+    return this.deps.mfa.beginWebAuthnLogin(challengeId);
+  }
+
+  /** Completes a WebAuthn-challenged login and issues the session tokens. */
+  async completeWebAuthnMfa(
+    input: {
+      challengeId: string;
+      credential: Parameters<MfaService['verifyWebAuthnLogin']>[1];
+      rememberDevice: boolean;
+    },
+    req: Request
+  ): Promise<MfaLoginCompletion> {
+    const { userId, deviceToken } = await this.deps.mfa.verifyWebAuthnLogin(
+      input.challengeId,
+      input.credential,
+      input.rememberDevice,
+      req
+    );
+    return this.finishMfaLogin(userId, req, deviceToken);
+  }
+
+  private async finishMfaLogin(
+    userId: string,
+    req: Request,
+    deviceToken: string | null
+  ): Promise<MfaLoginCompletion> {
+    const user = await this.deps.users.findById(userId);
+    if (!user) throw Errors.unauthorized('Account no longer exists.');
+
+    const ip = getClientIp(req);
+    const userAgent = getUserAgent(req);
+    const tokens = await this.issueTokens(user, { ip, userAgent }, false);
+
+    await this.deps.audits.log(user.id, AUDIT_ACTION.MFA_LOGIN_VERIFIED, 'INFO', req, {
+      rememberDevice: deviceToken !== null,
+    });
+
+    return {
+      user: toAuthUser(user),
+      tokens,
+      deviceToken,
+    };
   }
 
   // ---------------------------------------------------------------------------

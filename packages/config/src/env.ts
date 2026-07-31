@@ -78,6 +78,24 @@ export const envSchema = z.object({
   IDLE_TIMEOUT_MINUTES: numberFromString(30),
   MAX_DEVICES_PER_USER: numberFromString(10),
 
+  // Multi-Factor Authentication
+  /** Key used to encrypt TOTP secrets at rest (AES-256-GCM, derived via SHA-256). */
+  ENCRYPTION_KEY: z
+    .string()
+    .min(16, 'ENCRYPTION_KEY must be at least 16 characters')
+    .default('dev-encryption-key-min-16-chars'),
+  /** WebAuthn relying party ID (must match the browser origin host). */
+  WEBAUTHN_RP_ID: z.string().default('localhost'),
+  WEBAUTHN_RP_NAME: z.string().default('SecureAuthX Pro'),
+  /** Origin allowed to complete WebAuthn ceremonies. */
+  WEBAUTHN_ORIGIN: z.string().default('http://localhost:3000'),
+  /** Lifetime of a pending MFA challenge in seconds. */
+  MFA_CHALLENGE_TTL: numberFromString(600),
+  /** Number of one-time recovery codes generated per enrollment. */
+  RECOVERY_CODES_COUNT: numberFromString(10),
+  /** How long a "trust this device" cookie lasts, in days. */
+  TRUSTED_DEVICE_TTL_DAYS: numberFromString(30),
+
   // Email (SMTP)
   SMTP_HOST: z.string().default('localhost'),
   SMTP_PORT: numberFromString(1025),
@@ -137,6 +155,9 @@ export function parseEnv(source: Record<string, string | undefined>): EnvValidat
     }
     if (!env.COOKIE_SECURE) {
       warnings.push('COOKIE_SECURE is false; authentication cookies will be sent over plain HTTP.');
+    }
+    if (env.ENCRYPTION_KEY.startsWith('dev-')) {
+      warnings.push('ENCRYPTION_KEY appears to be a development/example value.');
     }
   }
 

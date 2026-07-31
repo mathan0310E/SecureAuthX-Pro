@@ -3,3 +3,5 @@ export * from './jwt';
 export * from './rate-limit';
 export * from './sanitize';
 export * from './headers';
+export * from './totp';
+export * from './encryption';

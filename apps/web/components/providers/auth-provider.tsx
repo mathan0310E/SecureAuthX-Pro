@@ -1,6 +1,6 @@
 'use client';
 
-import type { AuthenticatedUser, LoginResponseData, RegisterResponseData, ResendVerificationResponseData, VerifyEmailResponseData } from '@secureauthx/types';
+import type { AuthenticatedUser, LoginResponseData, MfaLoginResponseData, RegisterResponseData, ResendVerificationResponseData, VerifyEmailResponseData } from '@secureauthx/types';
 import type { LoginInput, RegisterInput } from '@/lib/validation/auth';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { createContext, useCallback, useContext, useMemo, type ReactNode } from 'react';
@@ -14,7 +14,7 @@ interface AuthContextValue {
   user: AuthenticatedUser | null;
   /** True while the initial session check is still in flight. */
   isPending: boolean;
-  signIn: (input: LoginInput) => Promise<LoginResponseData>;
+  signIn: (input: LoginInput) => Promise<LoginResponseData | MfaLoginResponseData>;
   signUp: (input: RegisterInput) => Promise<RegisterResponseData>;
   signOut: () => Promise<void>;
   verifyEmail: (token: string) => Promise<VerifyEmailResponseData>;
@@ -52,7 +52,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signIn = useCallback(
     async (input: LoginInput) => {
       const result = await authApi.login(input);
-      invalidateSession();
+      // Only a completed login (tokens present) establishes a session.
+      if ('tokens' in result) {
+        invalidateSession();
+      }
       return result;
     },
     [invalidateSession]

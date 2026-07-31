@@ -1,0 +1,37 @@
+- generic [ref=f4e1]:
+  - generic [ref=f4e5]:
+    - banner [ref=f4e6]:
+      - link "SecureAuthX Pro" [ref=f4e7] [cursor=pointer]:
+        - /url: /dashboard
+      - generic [ref=f4e13]:
+        - button "Toggle color scheme" [ref=f4e14]
+        - link "Dashboard" [ref=f4e21] [cursor=pointer]:
+          - /url: /dashboard
+        - link "Security" [ref=f4e27] [cursor=pointer]:
+          - /url: /security
+        - link "Activity" [ref=f4e31] [cursor=pointer]:
+          - /url: /security/activity
+        - link "Admin" [ref=f4e35] [cursor=pointer]:
+          - /url: /admin
+        - button "Sign out" [ref=f4e41]
+    - main [ref=f4e45]:
+      - generic [ref=f4e46]:
+        - heading "Security activity" [level=1] [ref=f4e50]
+        - paragraph [ref=f4e51]: A record of security-relevant events on your account — sign-ins, MFA challenges, and other authentication actions.
+      - generic [ref=f4e52]:
+        - button "Audit log" [ref=f4e53]
+        - button "Security events" [active] [ref=f4e54]
+      - generic [ref=f4e56]:
+        - generic [ref=f4e58]:
+          - heading "Security events" [level=2] [ref=f4e266]
+          - generic [ref=f4e65]: 0 total
+        - generic [ref=f4e66]:
+          - paragraph [ref=f4e271]: No activity yet.
+          - generic [ref=f4e248]:
+            - button "Previous" [disabled]
+            - generic [ref=f4e249]: Page 1 of 1
+            - button "Next" [disabled]
+      - paragraph [ref=f4e253]: Unusual activity in this feed can indicate an attempted account takeover. Contact support if you see something you do not recognise.
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=f4e261] [cursor=pointer]
+  - alert [ref=f4e265]

@@ -10,6 +10,11 @@
     "install:browsers": "playwright install"
   },
   "devDependencies": {
-    "@playwright/test": "^1.49.1"
+    "@playwright/test": "^1.49.1",
+    "@secureauthx/config": "workspace:*",
+    "@secureauthx/database": "workspace:*",
+    "@types/bcrypt": "^5.0.2",
+    "bcrypt": "^5.1.1",
+    "dotenv": "^16.4.5"
   }
 }

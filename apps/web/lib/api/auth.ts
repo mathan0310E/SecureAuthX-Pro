@@ -1,6 +1,7 @@
 import type {
   AuthenticatedUser,
   LoginResponseData,
+  MfaLoginResponseData,
   RegisterResponseData,
   ResendVerificationResponseData,
   VerifyEmailResponseData,
@@ -28,8 +29,8 @@ export const authApi = {
     });
   },
 
-  login(input: LoginInput): Promise<LoginResponseData> {
-    return apiFetch<LoginResponseData>('/api/v1/auth/login', {
+  login(input: LoginInput): Promise<LoginResponseData | MfaLoginResponseData> {
+    return apiFetch<LoginResponseData | MfaLoginResponseData>('/api/v1/auth/login', {
       method: 'POST',
       body: input,
     });

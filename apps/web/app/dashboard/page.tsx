@@ -126,14 +126,22 @@ function DashboardContent() {
                   </span>
                 </li>
               </ul>
-              <Button
-                variant="secondary"
-                className="w-full"
-                onClick={() => void signOut()}
-              >
-                <LogOut className="size-4" aria-hidden="true" />
-                Sign out
-              </Button>
+              <div className="flex flex-col gap-2">
+                <Link href="/security" className="w-full">
+                  <Button variant="secondary" className="w-full">
+                    <ShieldCheck className="size-4" aria-hidden="true" />
+                    Manage MFA & security
+                  </Button>
+                </Link>
+                <Button
+                  variant="ghost"
+                  className="w-full"
+                  onClick={() => void signOut()}
+                >
+                  <LogOut className="size-4" aria-hidden="true" />
+                  Sign out
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </section>

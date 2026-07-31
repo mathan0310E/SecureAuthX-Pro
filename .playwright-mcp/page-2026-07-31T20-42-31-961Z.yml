@@ -1,0 +1,31 @@
+- generic [active] [ref=f4e1]:
+  - generic [ref=f4e2]:
+    - banner [ref=f4e3]:
+      - link "SecureAuthX Pro" [ref=f4e4] [cursor=pointer]:
+        - /url: /
+      - button "Toggle color scheme" [ref=f4e10]
+    - main [ref=f4e17]:
+      - generic [ref=f4e18]:
+        - generic [ref=f4e19]:
+          - heading "Welcome back" [level=1] [ref=f4e20]
+          - paragraph [ref=f4e21]: Sign in to your SecureAuthX Pro account.
+        - generic [ref=f4e24]:
+          - generic [ref=f4e25]:
+            - generic [ref=f4e26]: Email
+            - textbox "Email" [ref=f4e28]:
+              - /placeholder: you@company.com
+              - text: admin@secureauthx.local
+          - generic [ref=f4e29]:
+            - generic [ref=f4e30]: Password
+            - textbox "Password" [ref=f4e31]:
+              - /placeholder: ••••••••••••
+          - generic [ref=f4e32] [cursor=pointer]:
+            - checkbox "Keep me signed in" [ref=f4e33]
+            - text: Keep me signed in
+          - button "Sign in" [ref=f4e34]
+        - paragraph [ref=f4e35]:
+          - text: Don't have an account?
+          - link "Create one" [ref=f4e36] [cursor=pointer]:
+            - /url: /register
+  - region "Notifications alt+T"
+  - alert [ref=f4e37]
