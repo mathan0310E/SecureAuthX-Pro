@@ -4,9 +4,6 @@ on:
   push:
     branches:
       - main
-    paths:
-      - 'apps/web/**'
-      - '.github/workflows/vercel-deploy.yml'
   workflow_dispatch:
 
 env:
@@ -45,4 +42,3 @@ jobs:
           vercel-org-id: ${{ env.VERCEL_ORG_ID }}
           vercel-project-id: ${{ env.VERCEL_PROJECT_ID }}
           vercel-args: "--prod"
-          working-directory: apps/web
