@@ -54,6 +54,18 @@ services:
     networks:
       - secureauthx-net
 
+  # --- MailHog (development mail catcher) -------------------------------------
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    container_name: secureauthx-mailhog
+    profiles: ["infra"]
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    restart: unless-stopped
+    networks:
+      - secureauthx-net
+
   # --- API --------------------------------------------------------------------
   api:
     build:

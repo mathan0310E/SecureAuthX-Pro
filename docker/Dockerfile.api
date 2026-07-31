@@ -14,6 +14,7 @@ COPY packages/types/package.json packages/types/package.json
 COPY packages/shared/package.json packages/shared/package.json
 COPY packages/security/package.json packages/security/package.json
 COPY packages/auth/package.json packages/auth/package.json
+COPY packages/mail/package.json packages/mail/package.json
 COPY packages/database/package.json packages/database/package.json
 COPY packages/validation/package.json packages/validation/package.json
 

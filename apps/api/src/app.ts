@@ -5,10 +5,9 @@ import { configureSecurity } from './middlewares/security';
 import { requestIdMiddleware } from './middlewares/request-id';
 import { httpLogger } from './middlewares/http-logger';
 import { containerMiddleware } from './middlewares/container';
-import { createAuthenticateMiddleware } from './middlewares/authenticate';
 import { errorHandler } from './middlewares/error-handler';
 import { notFoundHandler } from './middlewares/not-found';
-import { apiRouter } from './routes';
+import { createApiRouter } from './routes';
 import type { AppContainer } from './config/container';
 
 /**
@@ -32,7 +31,7 @@ export function createApp(container: AppContainer): Express {
 
   app.use(containerMiddleware(container));
 
-  app.use('/api', apiRouter);
+  app.use('/api', createApiRouter(container));
 
   // Liveness probe at the root for plain-Docker healthchecks.
   app.get('/health', (_req: Request, res: Response) => {
@@ -45,35 +44,6 @@ export function createApp(container: AppContainer): Express {
   );
 
   return app;
-}
-
-/**
- * Builds the auth middleware bound to the container's services.
- * Registered here so feature routers can mount `/auth` protected routes.
- */
-export function createBoundAuthMiddleware(container: AppContainer) {
-  return createAuthenticateMiddleware({
-    verify: (token) => container.jwt.verifyAccessToken(token),
-    findUser: async (id) => {
-      const user = await container.repositories.users.findById(id);
-      if (!user) return null;
-      return {
-        id: user.id,
-        email: user.email,
-        role: user.role,
-        emailVerified: user.emailVerified,
-        mfaEnabled: user.mfaEnabled,
-        status: user.status,
-      };
-    },
-    isSessionActive: async (sessionId, userId) => {
-      const session = await container.prisma.session.findFirst({
-        where: { id: sessionId, userId, status: 'ACTIVE', expiresAt: { gt: new Date() } },
-        select: { id: true },
-      });
-      return session !== null;
-    },
-  });
 }
 
 export const listen = (app: Express): void => {

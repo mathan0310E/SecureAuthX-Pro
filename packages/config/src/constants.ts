@@ -59,6 +59,8 @@ export const AUDIT_ACTION = {
   TOKEN_REUSE_DETECTED: 'auth.token_reuse',
   // Account
   EMAIL_VERIFIED: 'account.email_verified',
+  EMAIL_VERIFICATION_SENT: 'account.email_verification_sent',
+  EMAIL_VERIFICATION_RESENT: 'account.email_verification_resent',
   PASSWORD_CHANGED: 'account.password_changed',
   PASSWORD_RESET_REQUESTED: 'account.password_reset_requested',
   PASSWORD_RESET: 'account.password_reset',

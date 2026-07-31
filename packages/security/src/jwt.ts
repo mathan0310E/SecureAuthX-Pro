@@ -1,4 +1,5 @@
 import jwt, { type SignOptions } from 'jsonwebtoken';
+import { randomUUID } from 'node:crypto';
 import type { JwtAccessPayload, JwtRefreshPayload, UserRole } from '@secureauthx/types';
 import { TOKEN_TTL } from '@secureauthx/config';
 
@@ -40,10 +41,11 @@ export class JwtService {
     return jwt.sign(payload, this.config.accessSecret, options);
   }
 
-  createRefreshToken(userId: string, jti: string): string {
+  createRefreshToken(userId: string, jti: string, expiresInSeconds?: number): string {
     const payload: Omit<JwtRefreshPayload, 'iat' | 'exp' | 'iss' | 'aud'> = {
       sub: userId,
       jti,
+      nonce: randomUUID(),
       type: 'refresh',
     };
 
@@ -51,7 +53,7 @@ export class JwtService {
       algorithm: 'HS256',
       issuer: this.config.issuer,
       audience: this.config.audience,
-      expiresIn: this.config.refreshTtl,
+      expiresIn: expiresInSeconds ?? this.config.refreshTtl,
     };
 
     return jwt.sign(payload, this.config.refreshSecret, options);

@@ -23,6 +23,8 @@ export interface JwtAccessPayload {
 export interface JwtRefreshPayload {
   sub: string;
   jti: string;
+  /** Random per-token nonce so two tokens for the same session never collide. */
+  nonce: string;
   type: 'refresh';
   iat: number;
   exp: number;
@@ -36,6 +38,43 @@ export interface AuthTokens {
   csrfToken: string;
   expiresIn: number;
   tokenType: 'Bearer';
+}
+
+/** Public user shape returned from auth endpoints. */
+export interface AuthUser {
+  id: string;
+  email: string;
+  role: UserRole;
+  status: AccountStatus;
+  emailVerified: boolean;
+  mfaEnabled: boolean;
+  createdAt: string;
+  lastLoginAt: string | null;
+}
+
+export interface RegisterResponseData {
+  email: string;
+  requiresEmailVerification: boolean;
+}
+
+export interface LoginResponseData {
+  user: AuthUser;
+  tokens: AuthTokens;
+}
+
+export interface RefreshResponseData {
+  user: AuthUser;
+  tokens: AuthTokens;
+}
+
+export interface VerifyEmailResponseData {
+  email: string;
+  verified: boolean;
+}
+
+export interface ResendVerificationResponseData {
+  email: string;
+  sent: boolean;
 }
 
 export interface AuthenticatedUser {
