@@ -6,6 +6,7 @@ import type { NextConfig } from 'next';
  * seamlessly and CSRF double-submit works without CORS preflight.
  */
 const apiUrl = process.env.API_URL ?? 'http://localhost:4000';
+const isProd = process.env.NODE_ENV === 'production';
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
@@ -22,6 +23,11 @@ const nextConfig: NextConfig = {
     ],
   },
   async rewrites() {
+    if (isProd && !process.env.API_URL) {
+      // In production without API_URL, don't proxy (let /api/* 404 or handle as needed)
+      // This assumes the API is deployed separately
+      return [];
+    }
     return [
       {
         source: '/api/:path*',

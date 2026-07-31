@@ -12,6 +12,7 @@ import {
   Github,
 } from 'lucide-react';
 import { AuthNav } from '@/components/auth/auth-nav';
+import { ClientDate } from '@/components/client-date';
 
 const features = [
   {
@@ -237,7 +238,7 @@ export default function HomePage() {
 
       <footer className="relative z-10 border-t">
         <div className="mx-auto flex w-full max-w-6xl flex-col items-center justify-between gap-4 px-6 py-8 text-sm text-muted-foreground sm:flex-row">
-          <span>© {new Date().getFullYear()} SecureAuthX Pro. MIT licensed.</span>
+          <span>© <ClientDate /> SecureAuthX Pro. MIT licensed.</span>
           <span className="inline-flex items-center gap-1.5">
             <Lock className="size-3.5" aria-hidden="true" />
             Identity & Access Management
