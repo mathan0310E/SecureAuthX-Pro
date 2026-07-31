@@ -49,6 +49,8 @@ export function createAuthRouter(container: AppContainer): Router {
     authController.resendVerification
   );
 
+  router.post('/logout', authController.logout);
+
   router.get('/me', authRequired, authController.me);
 
   return router;

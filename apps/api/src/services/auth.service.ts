@@ -10,7 +10,8 @@ import {
   safeEqual,
   sha256,
 } from '@secureauthx/shared';
-import { AUDIT_ACTION, SECURITY_EVENT_TYPE } from '@secureauthx/config';
+import { AUDIT_ACTION, COOKIE_NAMES, SECURITY_EVENT_TYPE } from '@secureauthx/config';
+import { resolveAccessToken } from '../middlewares/authenticate';
 import type { AuthTokens, AuthUser, LoginResponseData, RefreshResponseData, RegisterResponseData, ResendVerificationResponseData, VerifyEmailResponseData } from '@secureauthx/types';
 import type { JwtService } from '@secureauthx/security';
 import type { PasswordService } from '@secureauthx/auth';
@@ -383,5 +384,45 @@ export class AuthService {
         tokenType: 'Bearer',
       },
     };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Logout
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Revokes the current session. Resolution order prefers the refresh
+   * cookie (works even when the access token has expired) and falls back
+   * to the access token. Idempotent — always succeeds for the caller.
+   */
+  async logout(req: Request): Promise<{ revoked: boolean; userId: string | null }> {
+    const accessToken = resolveAccessToken(req);
+    const refreshToken =
+      typeof req.cookies?.[COOKIE_NAMES.REFRESH_TOKEN] === 'string'
+        ? req.cookies[COOKIE_NAMES.REFRESH_TOKEN]
+        : undefined;
+
+    let sessionId: string | null = null;
+    let userId: string | null = null;
+
+    if (refreshToken) {
+      const payload = this.deps.jwt.verifyRefreshToken(refreshToken);
+      sessionId = payload?.jti ?? null;
+      userId = payload?.sub ?? null;
+    }
+    if (!sessionId && accessToken) {
+      const payload = this.deps.jwt.verifyAccessToken(accessToken);
+      sessionId = payload?.sessionId ?? null;
+      userId = payload?.sub ?? null;
+    }
+
+    if (sessionId) {
+      await this.deps.sessions.revoke(sessionId);
+      if (userId) {
+        await this.deps.audits.log(userId, AUDIT_ACTION.LOGOUT, 'INFO', req);
+      }
+    }
+
+    return { revoked: sessionId !== null, userId };
   }
 }

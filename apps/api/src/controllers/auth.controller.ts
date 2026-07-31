@@ -2,7 +2,7 @@ import type { Request, Response } from 'express';
 import { COOKIE_NAMES } from '@secureauthx/config';
 import { Errors } from '../utils/errors';
 import { ok } from '../utils/response';
-import { setAuthCookies } from '../utils/cookies';
+import { setAuthCookies, clearAuthCookies } from '../utils/cookies';
 import { env } from '../config/env';
 import { asyncHandler } from '@secureauthx/shared';
 
@@ -53,5 +53,11 @@ export const authController = {
 
   me: asyncHandler(async (req: Request, res: Response) => {
     ok(req, res, 'USER_FETCHED', 'Authenticated user.', { user: req.user });
+  }),
+
+  logout: asyncHandler(async (req: Request, res: Response) => {
+    const data = await req.container!.auth.logout(req);
+    clearAuthCookies(res);
+    ok(req, res, 'LOGGED_OUT', 'Signed out successfully.', data);
   }),
 };

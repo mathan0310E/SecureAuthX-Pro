@@ -11,7 +11,7 @@ import {
   ArrowRight,
   Github,
 } from 'lucide-react';
-import { ThemeToggle } from '@/components/theme-toggle';
+import { AuthNav } from '@/components/auth/auth-nav';
 
 const features = [
   {
@@ -80,20 +80,7 @@ export default function HomePage() {
         </nav>
 
         <div className="flex items-center gap-3">
-          <ThemeToggle />
-          <Link
-            href="/login"
-            className="hidden items-center gap-1.5 rounded-lg border px-3.5 py-1.5 text-sm font-medium transition-colors hover:bg-accent sm:inline-flex"
-          >
-            Sign in
-          </Link>
-          <Link
-            href="/register"
-            className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-1.5 text-sm font-medium text-primary-foreground shadow-sm transition-all hover:bg-primary/90"
-          >
-            Get started
-            <ArrowRight className="size-3.5" aria-hidden="true" />
-          </Link>
+          <AuthNav />
         </div>
       </header>
 
