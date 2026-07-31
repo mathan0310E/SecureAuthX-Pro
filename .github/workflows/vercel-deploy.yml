@@ -8,11 +8,6 @@ on:
       - 'apps/web/**'
       - '.github/workflows/vercel-deploy.yml'
   workflow_dispatch:
-    inputs:
-      vercel_flags:
-        description: 'Vercel CLI flags (e.g., --prod)'
-        required: false
-        default: '--prod'
 
 env:
   VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
@@ -49,6 +44,5 @@ jobs:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ env.VERCEL_ORG_ID }}
           vercel-project-id: ${{ env.VERCEL_PROJECT_ID }}
-          vercel-args: ${{ inputs.vercel_flags || '--prod' }}
           vercel-args: "--prod"
           working-directory: apps/web
