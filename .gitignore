@@ -1,0 +1,65 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Builds
+dist/
+build/
+.next/
+out/
+coverage/
+.turbo/
+
+# Environment
+.env
+.env.*
+!.env.example
+!.env.development.example
+!.env.production.example
+
+# Logs
+logs/*.log
+logs/api/*.log
+logs/web/*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Database
+*.db
+*.sqlite
+
+# Redis
+*.rdb
+*.aof
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.swp
+*.swo
+
+# Storage
+storage/uploads/*
+storage/backups/*
+!storage/uploads/.gitkeep
+!storage/backups/.gitkeep
+
+# Prisma
+packages/database/generated/
+
+# Playwright
+test-results/
+playwright-report/
+blob-report/
+
+# Temp
+temp/*

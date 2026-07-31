@@ -1,0 +1,40 @@
+{
+  "name": "secureauthx-pro",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SecureAuthX Pro - Enterprise Multi-Factor Authentication Platform (Self-Hosted, Open Source)",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.0.0",
+    "pnpm": ">=10.0.0"
+  },
+  "packageManager": "pnpm@11.11.0",
+  "scripts": {
+    "build": "pnpm -r --if-present run build",
+    "dev": "pnpm -r --parallel --if-present run dev",
+    "dev:api": "pnpm --filter @secureauthx/api run dev",
+    "dev:web": "pnpm --filter @secureauthx/web run dev",
+    "start": "pnpm -r --if-present run start",
+    "lint": "pnpm -r --if-present run lint",
+    "typecheck": "pnpm -r --if-present run typecheck",
+    "test": "pnpm -r --if-present run test",
+    "test:e2e": "pnpm --filter @secureauthx/e2e run test",
+    "format": "prettier --write \"**/*.{ts,tsx,js,json,md,yaml,yml,css}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,json,md,yaml,yml,css}\"",
+    "db:generate": "pnpm --filter @secureauthx/database run db:generate",
+    "db:migrate": "pnpm --filter @secureauthx/database run db:migrate",
+    "db:migrate:dev": "pnpm --filter @secureauthx/database run db:migrate:dev",
+    "db:studio": "pnpm --filter @secureauthx/database run db:studio",
+    "db:reset": "pnpm --filter @secureauthx/database run db:reset",
+    "db:seed": "pnpm --filter @secureauthx/database run db:seed",
+    "docker:up": "docker compose -f docker/docker-compose.yml up -d --build",
+    "docker:down": "docker compose -f docker/docker-compose.yml down",
+    "docker:logs": "docker compose -f docker/docker-compose.yml logs -f"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "prettier": "^3.4.2",
+    "prettier-plugin-tailwindcss": "^0.6.9",
+    "typescript": "^5.7.2"
+  }
+}

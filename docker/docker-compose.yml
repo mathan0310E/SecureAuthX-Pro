@@ -1,0 +1,128 @@
+# =============================================================================
+# SecureAuthX Pro — Development / Self-hosted stack
+#
+#   Infrastructure only:  docker compose --profile infra up -d
+#   Full application:     docker compose --profile app up -d --build
+# =============================================================================
+
+name: secureauthx-pro
+
+services:
+  # --- PostgreSQL 17 ----------------------------------------------------------
+  postgres:
+    image: postgres:17-alpine
+    container_name: secureauthx-postgres
+    profiles: ["infra", "app"]
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-secureauthx}
+      POSTGRES_USER: ${POSTGRES_USER:-secureauthx}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secureauthx}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    networks:
+      - secureauthx-net
+
+  # --- Redis 7 ----------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: secureauthx-redis
+    profiles: ["infra", "app"]
+    environment:
+      REDIS_REQUIREPASS: ${REDIS_PASSWORD:-}
+    command: >
+      /bin/sh -c 'exec redis-server --appendonly yes --maxmemory 128mb
+      --maxmemory-policy noeviction
+      ${REDIS_REQUIREPASS:+--requirepass "$REDIS_REQUIREPASS"}'
+    volumes:
+      - redis-data:/data
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+    networks:
+      - secureauthx-net
+
+  # --- API --------------------------------------------------------------------
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.api
+    container_name: secureauthx-api
+    profiles: ["app"]
+    env_file:
+      - ../.env
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-secureauthx}:${POSTGRES_PASSWORD:-secureauthx}@postgres:5432/${POSTGRES_DB:-secureauthx}?schema=public
+      REDIS_URL: redis://:${REDIS_PASSWORD:-}@redis:6379
+      API_BIND_ADDRESS: 0.0.0.0
+      LOG_DIR: /app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    expose:
+      - "4000"
+    volumes:
+      - ./logs:/app/logs
+    restart: unless-stopped
+    networks:
+      - secureauthx-net
+
+  # --- Web ---------------------------------------------------------------------
+  web:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.web
+    container_name: secureauthx-web
+    profiles: ["app"]
+    environment:
+      NODE_ENV: production
+      NEXT_TELEMETRY_DISABLED: "1"
+      WEB_URL: http://localhost
+      API_URL: http://api:4000
+    depends_on:
+      - api
+    expose:
+      - "3000"
+    restart: unless-stopped
+    networks:
+      - secureauthx-net
+
+  # --- Nginx reverse proxy -------------------------------------------------------
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: secureauthx-nginx
+    profiles: ["app"]
+    depends_on:
+      - api
+      - web
+    ports:
+      - "80:80"
+    volumes:
+      - ../nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ../nginx/conf.d:/etc/nginx/conf.d:ro
+    restart: unless-stopped
+    networks:
+      - secureauthx-net
+
+volumes:
+  postgres-data:
+  redis-data:
+
+networks:
+  secureauthx-net:
+    driver: bridge

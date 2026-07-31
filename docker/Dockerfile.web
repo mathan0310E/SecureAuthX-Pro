@@ -1,0 +1,52 @@
+# =============================================================================
+# SecureAuthX Pro — Web image (multi-stage)
+# =============================================================================
+
+# --- Dependencies -------------------------------------------------------------
+FROM node:22-alpine AS deps
+RUN corepack enable && corepack prepare pnpm@11.11.0 --activate
+WORKDIR /app
+
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml tsconfig.base.json ./
+COPY apps/web/package.json apps/web/package.json
+COPY packages/config/package.json packages/config/package.json
+COPY packages/types/package.json packages/types/package.json
+COPY packages/ui/package.json packages/ui/package.json
+COPY packages/validation/package.json packages/validation/package.json
+COPY packages/security/package.json packages/security/package.json
+
+RUN pnpm install --frozen-lockfile
+
+# --- Builder ------------------------------------------------------------------
+FROM node:22-alpine AS builder
+RUN corepack enable && corepack prepare pnpm@11.11.0 --activate
+WORKDIR /app
+
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/pnpm-lock.yaml ./pnpm-lock.yaml
+
+COPY tsconfig.base.json ./
+COPY apps/web ./apps/web
+COPY packages ./packages
+
+ENV NEXT_TELEMETRY_DISABLED=1
+RUN pnpm --filter @secureauthx/web build
+
+# --- Runtime -------------------------------------------------------------------
+FROM node:22-alpine AS runner
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+WORKDIR /app
+
+COPY --from=builder /app/apps/web/.next ./apps/web/.next
+COPY --from=builder /app/apps/web/public ./apps/web/public
+COPY --from=builder /app/apps/web/package.json ./apps/web/package.json
+COPY --from=builder /app/apps/web/next.config.ts ./apps/web/next.config.ts
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/pnpm-workspace.yaml /app/package.json ./
+
+RUN chown -R node:node /app
+USER node
+
+EXPOSE 3000
+CMD ["node_modules/.bin/next", "start", "apps/web", "-p", "3000"]
