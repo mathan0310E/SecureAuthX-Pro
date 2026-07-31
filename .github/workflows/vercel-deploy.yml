@@ -4,9 +4,9 @@ on:
   push:
     branches:
       - main
-      paths:
-        - 'apps/web/**'
-        - '.github/workflows/vercel-deploy.yml'
+    paths:
+      - 'apps/web/**'
+      - '.github/workflows/vercel-deploy.yml'
   workflow_dispatch:
     inputs:
       vercel_flags:
@@ -28,20 +28,19 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '22'
           cache: 'pnpm'
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v2
+        uses: pnpm/action-setup@v4
         with:
-          version: '9.1'
+          version: '10'
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
       - name: Build web app
         run: pnpm --filter @secureauthx/web build
-        working-directory: apps/web
 
       - name: Deploy to Vercel
         uses: amondnet/vercel-action@v30
@@ -51,5 +50,5 @@ jobs:
           vercel-org-id: ${{ env.VERCEL_ORG_ID }}
           vercel-project-id: ${{ env.VERCEL_PROJECT_ID }}
           vercel-args: ${{ inputs.vercel_flags || '--prod' }}
+          vercel-args: "--prod"
           working-directory: apps/web
-          scope: ${{ secrets.VERCEL_SCOPE }}
