@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { AuthNav } from '@/components/auth/auth-nav';
 import { ClientDate } from '@/components/client-date';
+import { AppHeader } from '@/components/ui/app-header';
 
 const features = [
   {
@@ -57,10 +58,11 @@ const compliance = ['SOC 2 ready', 'OWASP aligned', 'Zero Trust', 'GDPR friendly
 
 export default function HomePage() {
   return (
-    <div className="relative min-h-screen overflow-hidden">
+    <div className="relative min-h-screen overflow-x-clip">
       <div className="bg-grid pointer-events-none absolute inset-0 opacity-60 [mask-image:radial-gradient(ellipse_60%_50%_at_50%_-10%,black,transparent)]" />
+      <div className="bg-radial-fade pointer-events-none absolute inset-0" />
 
-      <header className="relative z-10 mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-5">
+      <AppHeader>
         <div className="flex items-center gap-2.5">
           <div className="flex size-9 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-violet-600 shadow-lg shadow-primary/25">
             <ShieldCheck className="size-5 text-white" aria-hidden="true" />
@@ -83,10 +85,11 @@ export default function HomePage() {
         <div className="flex items-center gap-3">
           <AuthNav />
         </div>
-      </header>
+      </AppHeader>
 
       <main className="relative z-10">
-        <section className="mx-auto flex w-full max-w-6xl flex-col items-center px-6 pt-24 pb-20 text-center sm:pt-32">
+        <section className="relative mx-auto flex w-full max-w-6xl flex-col items-center px-6 pt-28 pb-24 text-center sm:pt-36">
+          <div className="pointer-events-none absolute left-1/2 top-32 -z-10 h-72 w-[36rem] -translate-x-1/2 rounded-full bg-gradient-to-r from-primary/25 via-violet-500/20 to-fuchsia-500/20 blur-3xl" />
           <div className="glass mb-6 inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-xs font-medium text-muted-foreground">
             <span className="relative flex size-2">
               <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-500 opacity-60" />
@@ -109,7 +112,7 @@ export default function HomePage() {
           <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
             <Link
               href="/register"
-              className="inline-flex items-center gap-2 rounded-xl bg-primary px-6 py-3 text-sm font-medium text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:bg-primary/90"
+              className="inline-flex items-center gap-2 rounded-xl bg-primary px-6 py-3 text-sm font-medium text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-xl hover:shadow-primary/30"
             >
               Deploy your instance
               <ArrowRight className="size-4" aria-hidden="true" />
@@ -118,14 +121,14 @@ export default function HomePage() {
               href="https://github.com/secureauthx-pro"
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-2 rounded-xl border px-6 py-3 text-sm font-medium transition-colors hover:bg-accent"
+              className="inline-flex items-center gap-2 rounded-xl border px-6 py-3 text-sm font-medium transition-all hover:-translate-y-0.5 hover:bg-accent"
             >
               <Github className="size-4" aria-hidden="true" />
               View source
             </a>
           </div>
 
-          <div className="mt-14 grid w-full max-w-3xl grid-cols-2 gap-px overflow-hidden rounded-2xl border bg-border sm:grid-cols-4">
+          <div className="mt-16 grid w-full max-w-3xl grid-cols-2 gap-px overflow-hidden rounded-2xl border bg-border sm:grid-cols-4">
             {compliance.map((item) => (
               <div key={item} className="bg-background px-4 py-3.5 text-center">
                 <div className="inline-flex items-center gap-1.5 text-sm font-medium">
@@ -137,7 +140,7 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section id="features" className="mx-auto w-full max-w-6xl px-6 pb-24">
+        <section id="features" className="scroll-mt-20 mx-auto w-full max-w-6xl px-6 pb-28">
           <div className="mb-12 text-center">
             <h2 className="text-balance text-3xl font-semibold tracking-tight sm:text-4xl">
               Everything an enterprise MFA platform needs
@@ -152,9 +155,9 @@ export default function HomePage() {
             {features.map((feature) => (
               <div
                 key={feature.title}
-                className="group rounded-2xl border bg-card p-6 transition-all hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5"
+                className="group rounded-2xl border bg-card p-6 transition-all hover:-translate-y-1 hover:border-primary/40 hover:shadow-xl hover:shadow-primary/10"
               >
-                <div className="mb-4 flex size-11 items-center justify-center rounded-xl border bg-background transition-colors group-hover:border-primary/40 group-hover:bg-primary/5">
+                <div className="mb-4 flex size-11 items-center justify-center rounded-xl border bg-gradient-to-br from-primary/10 to-violet-500/10 transition-all group-hover:border-primary/40 group-hover:from-primary/15 group-hover:to-violet-500/15 group-hover:shadow-md group-hover:shadow-primary/10">
                   <feature.icon className="size-5 text-primary" aria-hidden="true" />
                 </div>
                 <h3 className="mb-1.5 font-semibold tracking-tight">{feature.title}</h3>
@@ -166,8 +169,8 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section id="security" className="border-y bg-muted/40">
-          <div className="mx-auto grid w-full max-w-6xl gap-12 px-6 py-20 md:grid-cols-2 md:items-center">
+        <section id="security" className="scroll-mt-20 border-y bg-muted/40">
+          <div className="mx-auto grid w-full max-w-6xl gap-12 px-6 py-24 md:grid-cols-2 md:items-center">
             <div>
               <h2 className="text-balance text-3xl font-semibold tracking-tight sm:text-4xl">
                 Secure by default. Private by architecture.

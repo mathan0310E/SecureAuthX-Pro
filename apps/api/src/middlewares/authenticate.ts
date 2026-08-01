@@ -1,16 +1,19 @@
-import type { NextFunction, Request, Response } from 'express';
+import type { MiddlewareHandler } from 'hono';
 import type { AuthenticatedUser } from '@secureauthx/types';
+import type { HttpRequestContext } from '@secureauthx/shared';
 import { COOKIE_NAMES } from '@secureauthx/config';
 import { Errors } from '../utils/errors';
+import { toRequestContext } from '../utils/request-context';
+import type { AppEnv } from '../types/context';
 
-export type AccessTokenResolver = (req: Request) => string | null;
+export type AccessTokenResolver = (req: HttpRequestContext) => string | null;
 
 /**
  * Extracts the bearer access token from the Authorization header or the
  * httpOnly access-token cookie.
  */
-export function resolveAccessToken(req: Request): string | null {
-  const header = req.headers.authorization;
+export function resolveAccessToken(req: HttpRequestContext): string | null {
+  const header = req.headers['authorization'];
   if (typeof header === 'string' && header.startsWith('Bearer ')) {
     const token = header.slice('Bearer '.length).trim();
     if (token.length > 0) return token;
@@ -24,50 +27,36 @@ export function resolveAccessToken(req: Request): string | null {
 
 /**
  * Authenticates the request by verifying the access token and checking
- * that the referenced session is still valid. Attaches `req.user`.
+ * that the referenced session is still valid. Attaches the user to the
+ * Hono context for downstream handlers.
  */
 export function createAuthenticateMiddleware(deps: {
-  verify: (token: string) => { sub: string; sessionId: string; email: string; role: 'USER' | 'ADMIN' } | null;
+  verify: (
+    token: string
+  ) => Promise<{ sub: string; sessionId: string; email: string; role: 'USER' | 'ADMIN' } | null>;
   findUser: (id: string) => Promise<AuthenticatedUser | null>;
   isSessionActive: (sessionId: string, userId: string) => Promise<boolean>;
   resolver?: AccessTokenResolver;
-}) {
-  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+}): MiddlewareHandler<AppEnv> {
+  return async (c, next) => {
     const resolver = deps.resolver ?? resolveAccessToken;
-    const token = resolver(req);
+    const token = resolver(toRequestContext(c));
 
-    if (!token) {
-      next(Errors.unauthorized('Missing authentication token.'));
-      return;
-    }
+    if (!token) throw Errors.unauthorized('Missing authentication token.');
 
-    const payload = deps.verify(token);
-    if (!payload) {
-      next(Errors.unauthorized('Invalid or expired token.'));
-      return;
-    }
+    const payload = await deps.verify(token);
+    if (!payload) throw Errors.unauthorized('Invalid or expired token.');
 
     const [user, sessionActive] = await Promise.all([
       deps.findUser(payload.sub),
       deps.isSessionActive(payload.sessionId, payload.sub),
     ]);
 
-    if (!user) {
-      next(Errors.unauthorized('Account no longer exists.'));
-      return;
-    }
+    if (!user) throw Errors.unauthorized('Account no longer exists.');
+    if (user.status === 'DISABLED') throw Errors.forbidden('Account is disabled.');
+    if (!sessionActive) throw Errors.unauthorized('Session is no longer active.');
 
-    if (user.status === 'DISABLED') {
-      next(Errors.forbidden('Account is disabled.'));
-      return;
-    }
-
-    if (!sessionActive) {
-      next(Errors.unauthorized('Session is no longer active.'));
-      return;
-    }
-
-    req.user = user;
-    next();
+    c.set('user', user);
+    return next();
   };
 }

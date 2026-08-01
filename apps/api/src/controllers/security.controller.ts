@@ -1,19 +1,30 @@
-import type { Request, Response } from 'express';
-import { asyncHandler } from '@secureauthx/shared';
 import { ok } from '../utils/response';
+import type { AppContext } from '../types/context';
 
 /**
  * Security Dashboard endpoints — the signed-in user's own audit trail and
  * security events. All queries are scoped to the authenticated user.
  */
 export const securityController = {
-  listAuditLogs: asyncHandler(async (req: Request, res: Response) => {
-    const data = await req.container!.security.listMyAuditLogs(req.user!.id, req.query);
-    ok(req, res, 'AUDIT_LOGS_FETCHED', 'Audit logs.', data);
-  }),
+  listAuditLogs: async (c: AppContext) => {
+    const q = c.req.query();
+    const data = await c.get('container').security.listMyAuditLogs(c.get('user')!.id, {
+      page: q.page ? parseInt(q.page, 10) : undefined,
+      pageSize: q.pageSize ? parseInt(q.pageSize, 10) : undefined,
+      severity: q.severity,
+      action: q.action,
+    });
+    return ok(c, 'AUDIT_LOGS_FETCHED', 'Audit logs.', data);
+  },
 
-  listSecurityEvents: asyncHandler(async (req: Request, res: Response) => {
-    const data = await req.container!.security.listMySecurityEvents(req.user!.id, req.query);
-    ok(req, res, 'SECURITY_EVENTS_FETCHED', 'Security events.', data);
-  }),
+  listSecurityEvents: async (c: AppContext) => {
+    const q = c.req.query();
+    const data = await c.get('container').security.listMySecurityEvents(c.get('user')!.id, {
+      page: q.page ? parseInt(q.page, 10) : undefined,
+      pageSize: q.pageSize ? parseInt(q.pageSize, 10) : undefined,
+      severity: q.severity,
+      type: q.type,
+    });
+    return ok(c, 'SECURITY_EVENTS_FETCHED', 'Security events.', data);
+  },
 };

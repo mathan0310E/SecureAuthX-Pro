@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Hono } from 'hono';
 import { createAuthRateLimiter } from '@secureauthx/security';
 import {
   disableMfaSchema,
@@ -17,12 +17,13 @@ import { createBoundAuthMiddleware } from '../../middlewares/bound-auth';
 import { createRequireMfaChallengeMiddleware } from '../../middlewares/require-mfa-challenge';
 import { validate } from '../../middlewares/validate';
 import { mfaController } from '../../controllers/mfa.controller';
+import type { AppEnv } from '../../types/context';
 
 /**
  * /api/v1/mfa — second-factor verification (login) and enrollment/settings.
  */
-export function createMfaRouter(container: AppContainer): Router {
-  const router = Router();
+export function createMfaRouter(container: AppContainer): Hono<AppEnv> {
+  const router = new Hono<AppEnv>();
   const authRequired = createBoundAuthMiddleware(container);
   const mfaChallenge = createRequireMfaChallengeMiddleware(container);
   const mfaLimiter = createAuthRateLimiter({

@@ -1,8 +1,10 @@
-import type { NextFunction, Request, Response } from 'express';
+import type { ErrorHandler } from 'hono';
+import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import { ZodError } from 'zod';
 import { AppError } from '../utils/errors';
 import { logger } from '../config/logger';
 import { env } from '../config/env';
+import type { AppEnv } from '../types/context';
 
 interface ErrorBody {
   status: 'error';
@@ -17,13 +19,9 @@ interface ErrorBody {
  * Global error handler. Formats AppError instances into the consistent
  * envelope, converts unexpected errors into 500s, and logs everything.
  */
-export function errorHandler(
-  err: unknown,
-  req: Request,
-  res: Response,
-  _next: NextFunction
-): void {
-  const requestId = req.id ?? 'unknown';
+export const errorHandler: ErrorHandler<AppEnv> = (err, c) => {
+  const requestId = c.get('requestId') ?? 'unknown';
+  const path = new URL(c.req.url).pathname;
 
   let statusCode = 500;
   let code = 'INTERNAL_ERROR';
@@ -45,30 +43,20 @@ export function errorHandler(
     }));
   } else if (err instanceof Error) {
     message = env.NODE_ENV === 'production' ? message : err.message;
-    if (err.name === 'PayloadTooLargeError') {
-      statusCode = 413;
-      code = 'PAYLOAD_TOO_LARGE';
-      message = 'Request body too large.';
-    }
-    if (err.message.includes('Not allowed by CORS')) {
-      statusCode = 403;
-      code = 'CORS_ORIGIN_DENIED';
-      message = 'Origin is not allowed.';
-    }
   }
 
   if (statusCode >= 500) {
     logger.error('Unhandled error', {
       requestId,
-      method: req.method,
-      path: req.path,
+      method: c.req.method,
+      path,
       error: err instanceof Error ? { message: err.message, stack: err.stack } : err,
     });
   } else {
     logger.warn('Request error', {
       requestId,
-      method: req.method,
-      path: req.path,
+      method: c.req.method,
+      path,
       code,
       message,
     });
@@ -83,5 +71,5 @@ export function errorHandler(
   };
   if (details !== undefined && env.NODE_ENV !== 'production') body.details = details;
 
-  res.status(statusCode).json(body);
-}
+  return c.json(body, statusCode as ContentfulStatusCode);
+};

@@ -10,7 +10,7 @@ import {
   UserRepository,
 } from '@secureauthx/database';
 import type { PrismaClient } from '@secureauthx/database';
-import type Redis from 'ioredis';
+import type { Cache } from './cache';
 import { env } from './env';
 import { createChildLogger } from './logger';
 import { AuthService } from '../services/auth.service';
@@ -20,7 +20,7 @@ import { AdminService } from '../services/admin.service';
 
 export interface Container {
   prisma: PrismaClient;
-  redis: Redis;
+  cache: Cache;
   jwt: JwtService;
   password: PasswordService;
   mail: MailService;
@@ -43,7 +43,7 @@ export interface Container {
  * All services are constructed here; controllers depend on the container
  * (never on `process.env` or globals) for testability.
  */
-export function buildContainer(prisma: PrismaClient, redisClient: Redis): Container {
+export function buildContainer(prisma: PrismaClient, cache: Cache): Container {
   const jwt = new JwtService({
     accessSecret: env.JWT_ACCESS_SECRET,
     refreshSecret: env.JWT_REFRESH_SECRET,
@@ -56,14 +56,11 @@ export function buildContainer(prisma: PrismaClient, redisClient: Redis): Contai
   const password = new PasswordService(env.BCRYPT_ROUNDS);
 
   const mail = new MailService({
-    host: env.SMTP_HOST,
-    port: env.SMTP_PORT,
-    secure: env.SMTP_SECURE,
-    user: env.SMTP_USER,
-    password: env.SMTP_PASSWORD,
     from: env.SMTP_FROM,
     appName: env.APP_NAME,
     webUrl: env.WEB_URL,
+    provider: env.MAIL_PROVIDER,
+    resendApiKey: env.RESEND_API_KEY || undefined,
     logger: createChildLogger('mail'),
   });
 
@@ -80,6 +77,7 @@ export function buildContainer(prisma: PrismaClient, redisClient: Redis): Contai
 
   const mfa = new MfaService({
     prisma,
+    cache,
     password,
     users: repositories.users,
     mfa: repositories.mfa,
@@ -113,7 +111,7 @@ export function buildContainer(prisma: PrismaClient, redisClient: Redis): Contai
 
   return {
     prisma,
-    redis: redisClient,
+    cache,
     jwt,
     password,
     mail,

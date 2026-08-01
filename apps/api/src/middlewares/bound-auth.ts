@@ -1,11 +1,13 @@
+import type { MiddlewareHandler } from 'hono';
 import type { AppContainer } from '../config/container';
+import type { AppEnv } from '../types/context';
 import { createAuthenticateMiddleware } from './authenticate';
 
 /**
  * Builds the container-bound authenticate middleware. Lives in its own
  * module so routers can import it without creating import cycles with app.ts.
  */
-export function createBoundAuthMiddleware(container: AppContainer) {
+export function createBoundAuthMiddleware(container: AppContainer): MiddlewareHandler<AppEnv> {
   return createAuthenticateMiddleware({
     verify: (token) => container.jwt.verifyAccessToken(token),
     findUser: async (id) => {

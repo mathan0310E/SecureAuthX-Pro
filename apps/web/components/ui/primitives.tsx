@@ -11,7 +11,7 @@ type ButtonSize = 'sm' | 'md' | 'lg';
 
 const buttonVariants: Record<ButtonVariant, string> = {
   primary:
-    'bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 disabled:opacity-50',
+    'bg-primary text-primary-foreground shadow-sm shadow-primary/25 hover:bg-primary/90 hover:shadow-md hover:shadow-primary/30 disabled:opacity-50',
   secondary:
     'border bg-background text-foreground hover:bg-accent disabled:opacity-50',
   ghost: 'hover:bg-accent text-muted-foreground hover:text-foreground disabled:opacity-50',
@@ -20,9 +20,9 @@ const buttonVariants: Record<ButtonVariant, string> = {
 };
 
 const buttonSizes: Record<ButtonSize, string> = {
-  sm: 'h-8 px-3 text-xs',
-  md: 'h-10 px-4 text-sm',
-  lg: 'h-11 px-6 text-sm',
+  sm: 'h-8 px-3.5 text-xs',
+  md: 'h-11 px-5 text-sm',
+  lg: 'h-12 px-7 text-sm',
 };
 
 export interface ButtonProps
@@ -41,7 +41,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       ref={ref}
       disabled={disabled || loading}
       className={cn(
-        'inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none',
+        'inline-flex items-center justify-center gap-2 rounded-xl font-medium transition-all active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:active:scale-100',
         buttonVariants[variant],
         buttonSizes[size],
         className
@@ -67,7 +67,7 @@ export const Input = forwardRef<
     ref={ref}
     type={type}
     className={cn(
-      'h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm transition-colors placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50',
+      'h-11 w-full rounded-lg border border-input bg-background px-3.5 py-2.5 text-sm text-foreground shadow-sm transition-all placeholder:text-muted-foreground/60 hover:border-input/90 focus-visible:border-ring/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25 focus-visible:ring-offset-1 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50',
       className
     )}
     {...props}
@@ -132,7 +132,7 @@ export function CardHeader({
   children: React.ReactNode;
 }) {
   return (
-    <div className={cn('flex flex-col gap-1.5 p-6 pb-0', className)}>
+    <div className={cn('flex flex-col gap-1.5 p-6 pb-0 sm:p-7 sm:pb-0', className)}>
       {children}
     </div>
   );
@@ -145,7 +145,7 @@ export function CardContent({
   className?: string;
   children: React.ReactNode;
 }) {
-  return <div className={cn('p-6', className)}>{children}</div>;
+  return <div className={cn('p-6 sm:p-7', className)}>{children}</div>;
 }
 
 /* ------------------------------------------------------------------ */
@@ -174,7 +174,7 @@ export function Alert({
     <div
       role={variant === 'error' ? 'alert' : 'status'}
       className={cn(
-        'flex items-start gap-2.5 rounded-lg border px-3.5 py-3 text-sm leading-relaxed',
+        'flex items-start gap-2.5 rounded-lg border px-4 py-3.5 text-sm leading-relaxed',
         alertStyles[variant],
         className
       )}

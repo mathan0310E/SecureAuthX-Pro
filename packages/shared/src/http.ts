@@ -1,10 +1,19 @@
-import type { Request } from 'express';
+/**
+ * Minimal, framework-agnostic request surface used by shared helpers.
+ * Satisfied structurally by an Express `Request`, a Hono context adapter,
+ * or any object exposing headers + optional cookies + socket.
+ */
+export interface HttpRequestContext {
+  headers: Record<string, string | string[] | undefined>;
+  cookies?: Record<string, string | undefined>;
+  socket?: { remoteAddress?: string };
+}
 
 /**
  * Extracts the real client IP, honoring trusted proxy headers when present.
- * Falls back to the socket address.
+ * Falls back to the Cloudflare connecting-IP header, then the socket address.
  */
-export function getClientIp(req: Request): string {
+export function getClientIp(req: HttpRequestContext): string {
   const forwarded = req.headers['x-forwarded-for'];
   if (typeof forwarded === 'string' && forwarded.length > 0) {
     const first = forwarded.split(',')[0]?.trim();
@@ -13,6 +22,9 @@ export function getClientIp(req: Request): string {
 
   const realIp = req.headers['x-real-ip'];
   if (typeof realIp === 'string' && realIp.length > 0) return realIp;
+
+  const cfIp = req.headers['cf-connecting-ip'];
+  if (typeof cfIp === 'string' && cfIp.length > 0) return cfIp;
 
   const remote = req.socket?.remoteAddress;
   if (remote) return remote;
@@ -23,7 +35,7 @@ export function getClientIp(req: Request): string {
 /**
  * Extracts the full User-Agent string.
  */
-export function getUserAgent(req: Request): string {
+export function getUserAgent(req: HttpRequestContext): string {
   const ua = req.headers['user-agent'];
   return typeof ua === 'string' ? ua : '';
 }

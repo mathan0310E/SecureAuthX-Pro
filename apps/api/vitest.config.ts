@@ -2,6 +2,7 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
+    setupFiles: ['tests/setup.ts'],
     // Local integration tests hit the live rate limiters by IP; raise the
     // ceilings so a test run (or two) does not trip them.
     env: {

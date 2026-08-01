@@ -1,14 +1,15 @@
-import type { NextFunction, Request, Response } from 'express';
 import { randomUUID } from 'node:crypto';
+import type { MiddlewareHandler } from 'hono';
+import type { AppEnv } from '../types/context';
 
 /**
  * Assigns a requestId to every request for traceability across logs,
  * audit entries, and error responses.
  */
-export function requestIdMiddleware(req: Request, res: Response, next: NextFunction): void {
-  const incoming = req.headers['x-request-id'];
+export const requestIdMiddleware: MiddlewareHandler<AppEnv> = (c, next) => {
+  const incoming = c.req.header('x-request-id');
   const requestId = typeof incoming === 'string' && incoming.length > 0 ? incoming : randomUUID();
-  req.id = requestId;
-  res.setHeader('x-request-id', requestId);
-  next();
-}
+  c.set('requestId', requestId);
+  c.header('x-request-id', requestId);
+  return next();
+};

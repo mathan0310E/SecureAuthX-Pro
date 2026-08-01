@@ -29,6 +29,7 @@ import {
 } from 'recharts';
 import { RequireAdmin } from '@/components/auth/require-admin';
 import { AuthNav } from '@/components/auth/auth-nav';
+import { AppHeader } from '@/components/ui/app-header';
 import { useAuth } from '@/components/providers/auth-provider';
 import { adminApi } from '@/lib/api/admin';
 import type { AdminUserRow } from '@/lib/api/admin';
@@ -99,7 +100,7 @@ function StatCard({
   return (
     <Card>
       <CardContent className="flex items-start gap-3 pt-6">
-        <span className="flex size-9 items-center justify-center rounded-lg border bg-background">
+        <span className="flex size-9 items-center justify-center rounded-lg border bg-gradient-to-br from-primary/10 to-violet-500/10">
           {icon}
         </span>
         <div className="min-w-0">
@@ -203,10 +204,11 @@ function AdminContent() {
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden">
+    <div className="relative min-h-screen overflow-x-clip">
       <div className="bg-grid pointer-events-none absolute inset-0 opacity-60 [mask-image:radial-gradient(ellipse_60%_50%_at_50%_-10%,black,transparent)]" />
+      <div className="bg-radial-fade pointer-events-none absolute inset-0" />
 
-      <header className="relative z-10 mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-5">
+      <AppHeader>
         <Link href="/dashboard" className="flex items-center gap-2.5">
           <div className="flex size-9 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-violet-600 shadow-lg shadow-primary/25">
             <ShieldCheck className="size-5 text-white" aria-hidden="true" />
@@ -214,17 +216,17 @@ function AdminContent() {
           <span className="text-base font-semibold tracking-tight">SecureAuthX Pro</span>
         </Link>
         <AuthNav />
-      </header>
+      </AppHeader>
 
-      <main className="relative z-10 mx-auto w-full max-w-6xl px-6 pb-24">
-        <section className="pt-10">
+      <main className="relative z-10 mx-auto w-full max-w-6xl px-6 pb-28">
+        <section className="pt-12">
           <h1 className="text-3xl font-semibold tracking-tight">Admin dashboard</h1>
           <p className="mt-2 max-w-2xl text-pretty text-muted-foreground">
             Manage users and monitor platform-wide security metrics.
           </p>
         </section>
 
-        <section className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <section className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
             icon={<Users className="size-4 text-primary" aria-hidden="true" />}
             label="Total users"
@@ -248,7 +250,7 @@ function AdminContent() {
           />
         </section>
 
-        <section className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <section className="mt-8 grid grid-cols-1 gap-4 lg:grid-cols-2">
           <Card>
             <CardHeader>
               <div className="flex items-center gap-2">
@@ -338,7 +340,7 @@ function AdminContent() {
           </Card>
         </section>
 
-        <section className="mt-6">
+        <section className="mt-8">
           <Card>
             <CardHeader>
               <div className="flex items-center gap-2">
@@ -366,7 +368,7 @@ function AdminContent() {
                   />
                 </div>
                 <select
-                  className="h-10 rounded-lg border border-input bg-background px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="h-11 rounded-lg border border-input bg-background px-3.5 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   value={statusFilter}
                   onChange={(e) => {
                     setStatusFilter(e.target.value as AccountStatus | 'ALL');
@@ -385,12 +387,12 @@ function AdminContent() {
                 <table className="w-full min-w-[720px] border-collapse text-sm">
                   <thead>
                     <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
-                      <th className="py-2 pr-4 font-medium">Email</th>
-                      <th className="px-2 py-2 font-medium">Role</th>
-                      <th className="px-2 py-2 font-medium">Status</th>
-                      <th className="px-2 py-2 font-medium">MFA</th>
-                      <th className="px-2 py-2 font-medium">Last login</th>
-                      <th className="py-2 pl-4 text-right font-medium">Actions</th>
+                      <th className="py-3 pr-4 font-medium">Email</th>
+                      <th className="px-2 py-3 font-medium">Role</th>
+                      <th className="px-2 py-3 font-medium">Status</th>
+                      <th className="px-2 py-3 font-medium">MFA</th>
+                      <th className="px-2 py-3 font-medium">Last login</th>
+                      <th className="py-3 pl-4 text-right font-medium">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -408,18 +410,18 @@ function AdminContent() {
                       </tr>
                     ) : (
                       users!.items.map((u) => (
-                        <tr key={u.id} className="border-b last:border-0">
-                          <td className="py-3 pr-4">
+                        <tr key={u.id} className="border-b transition-colors last:border-0 hover:bg-accent/50">
+                          <td className="py-3.5 pr-4">
                             <p className="font-medium text-foreground">{u.email}</p>
                             <p className="text-xs text-muted-foreground">{u.id.slice(0, 8)}</p>
                           </td>
-                          <td className="px-2 py-3">
+                          <td className="px-2 py-3.5">
                             <RoleBadge role={u.role} />
                           </td>
-                          <td className="px-2 py-3">
+                          <td className="px-2 py-3.5">
                             <StatusBadge status={u.status} />
                           </td>
-                          <td className="px-2 py-3 text-muted-foreground">
+                          <td className="px-2 py-3.5 text-muted-foreground">
                             {u.mfaEnabled ? (
                               <span className="inline-flex items-center gap-1 text-success">
                                 <KeyRound className="size-3.5" aria-hidden="true" /> On
@@ -428,12 +430,12 @@ function AdminContent() {
                               'Off'
                             )}
                           </td>
-                          <td className="px-2 py-3 text-muted-foreground">
+                          <td className="px-2 py-3.5 text-muted-foreground">
                             {u.lastLoginAt
                               ? new Date(u.lastLoginAt).toLocaleDateString()
                               : 'Never'}
                           </td>
-                          <td className="py-3 pl-4">
+                          <td className="py-3.5 pl-4">
                             <div className="flex items-center justify-end gap-1.5">
                               <select
                                 className="h-8 rounded-md border border-input bg-background px-2 text-xs shadow-sm"

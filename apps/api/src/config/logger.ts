@@ -1,54 +1,90 @@
-import winston from 'winston';
-import path from 'node:path';
-import fs from 'node:fs';
 import { env } from './env';
 
-const logDir = path.resolve(process.cwd(), env.LOG_DIR);
+export type LogLevel = 'trace' | 'debug' | 'info' | 'http' | 'warn' | 'error' | 'fatal';
 
-if (!fs.existsSync(logDir)) {
-  fs.mkdirSync(logDir, { recursive: true });
-}
+const LEVEL_ORDER: Record<LogLevel, number> = {
+  trace: 0,
+  debug: 1,
+  info: 2,
+  http: 3,
+  warn: 4,
+  error: 5,
+  fatal: 6,
+};
 
-const baseFormat = winston.format.combine(
-  winston.format.timestamp({ format: 'YYYY-MM-DDTHH:mm:ss.SSSZ' }),
-  winston.format.errors({ stack: true }),
-  winston.format.splat(),
-  winston.format.metadata({ key: 'meta' })
-);
-
-const consoleFormat =
-  env.LOG_FORMAT === 'pretty'
-    ? winston.format.combine(baseFormat, winston.format.colorize(), winston.format.prettyPrint())
-    : winston.format.combine(baseFormat, winston.format.json());
+type Meta = Record<string, unknown>;
 
 /**
- * Central application logger. Writes JSON to console plus a rotating
- * combined/error file pair under LOG_DIR.
+ * Central application logger. Structured JSON to the platform console only —
+ * Cloudflare Workers have no filesystem, so the previous winston file
+ * transports are intentionally gone. Level filtering and format are driven by
+ * `LOG_LEVEL`/`LOG_FORMAT`.
  */
-export const logger = winston.createLogger({
-  level: env.LOG_LEVEL,
-  format: baseFormat,
-  defaultMeta: { service: 'secureauthx-api' },
-  transports: [
-    new winston.transports.Console({ format: consoleFormat }),
-    new winston.transports.File({
-      filename: path.join(logDir, 'api-combined.log'),
-      maxsize: 10 * 1024 * 1024,
-      maxFiles: 5,
-      tailable: true,
-    }),
-    new winston.transports.File({
-      filename: path.join(logDir, 'api-error.log'),
-      level: 'error',
-      maxsize: 10 * 1024 * 1024,
-      maxFiles: 5,
-      tailable: true,
-    }),
-  ],
-});
+export class Logger {
+  constructor(
+    private readonly defaults: Meta = {},
+    private readonly level: LogLevel = (env.LOG_LEVEL as LogLevel) ?? 'info',
+    private readonly pretty: boolean = env.LOG_FORMAT === 'pretty'
+  ) {}
 
-export type ApiLogger = typeof logger;
+  private write(level: LogLevel, msg: unknown, meta?: Meta): void {
+    if (LEVEL_ORDER[level] < LEVEL_ORDER[this.level]) return;
 
-export function createChildLogger(scope: string): winston.Logger {
-  return logger.child({ scope });
+    const entry = {
+      timestamp: new Date().toISOString(),
+      level,
+      service: 'secureauthx-api',
+      message: typeof msg === 'string' ? msg : msg,
+      ...this.defaults,
+      ...(meta ?? {}),
+    };
+
+    const line =
+      this.pretty && typeof entry.message === 'string'
+        ? `${entry.timestamp} ${level.toUpperCase()} ${entry.message}`
+        : JSON.stringify(entry);
+
+    if (level === 'error' || level === 'fatal') {
+      console.error(line);
+    } else if (level === 'warn') {
+      console.warn(line);
+    } else {
+      console.log(line);
+    }
+  }
+
+  trace(msg: unknown, meta?: Meta): void {
+    this.write('trace', msg, meta);
+  }
+  debug(msg: unknown, meta?: Meta): void {
+    this.write('debug', msg, meta);
+  }
+  info(msg: unknown, meta?: Meta): void {
+    this.write('info', msg, meta);
+  }
+  http(msg: unknown, meta?: Meta): void {
+    this.write('http', msg, meta);
+  }
+  warn(msg: unknown, meta?: Meta): void {
+    this.write('warn', msg, meta);
+  }
+  error(msg: unknown, meta?: Meta): void {
+    this.write('error', msg, meta);
+  }
+  fatal(msg: unknown, meta?: Meta): void {
+    this.write('fatal', msg, meta);
+  }
+
+  /** Returns a logger with a fixed `scope` stamped onto every entry. */
+  child(scope: string): Logger {
+    return new Logger({ ...this.defaults, scope }, this.level, this.pretty);
+  }
+}
+
+export type ApiLogger = Logger;
+
+export const logger = new Logger();
+
+export function createChildLogger(scope: string): Logger {
+  return logger.child(scope);
 }

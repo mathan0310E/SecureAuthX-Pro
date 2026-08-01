@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Hono } from 'hono';
 import {
   adminListUsersQuerySchema,
   analyticsTrendsQuerySchema,
@@ -10,15 +10,16 @@ import { createBoundAuthMiddleware } from '../../middlewares/bound-auth';
 import { requireAdmin } from '../../middlewares/require-admin';
 import { validate } from '../../middlewares/validate';
 import { adminController } from '../../controllers/admin.controller';
+import type { AppEnv } from '../../types/context';
 
 /**
  * /api/v1/admin — administrator-only user management and analytics.
  */
-export function createAdminRouter(container: AppContainer): Router {
-  const router = Router();
+export function createAdminRouter(container: AppContainer): Hono<AppEnv> {
+  const router = new Hono<AppEnv>();
   const authRequired = createBoundAuthMiddleware(container);
 
-  router.use(authRequired, requireAdmin);
+  router.use('*', authRequired, requireAdmin);
 
   router.get('/users', validate({ query: adminListUsersQuerySchema }), adminController.listUsers);
   router.patch('/users/:id/role', validate({ body: setUserRoleSchema }), adminController.setUserRole);

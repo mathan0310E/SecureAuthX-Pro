@@ -16,6 +16,13 @@ coverage/
 !.env.example
 !.env.development.example
 !.env.production.example
+!.env.cloudflare.example
+
+# Cloudflare / OpenNext
+.open-next/
+.wrangler/
+.dev.vars
+cloudflare-env.d.ts
 
 # Logs
 logs/*.log

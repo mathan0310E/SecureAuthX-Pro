@@ -1,6 +1,5 @@
 import type { Prisma, PrismaClient, Severity } from '@prisma/client';
-import type { Request } from 'express';
-import { getClientIp, getUserAgent } from '@secureauthx/shared';
+import { getClientIp, getUserAgent, type HttpRequestContext } from '@secureauthx/shared';
 
 /**
  * Audit trail and security-event persistence. Every security-relevant
@@ -13,7 +12,7 @@ export class AuditRepository {
     userId: string | null,
     action: string,
     severity: Severity,
-    req?: Request,
+    req?: HttpRequestContext,
     metadata?: Prisma.InputJsonValue
   ): Promise<void> {
     await this.db.auditLog.create({
@@ -32,7 +31,7 @@ export class AuditRepository {
     userId: string | null,
     type: string,
     severity: Severity,
-    req?: Request,
+    req?: HttpRequestContext,
     metadata?: Prisma.InputJsonValue
   ): Promise<void> {
     await this.db.securityEvent.create({

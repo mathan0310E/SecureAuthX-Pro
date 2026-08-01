@@ -1,40 +1,28 @@
-import fs from 'node:fs';
-import path from 'node:path';
-import dotenv from 'dotenv';
 import { parseEnv, type Env } from '@secureauthx/config';
 
-/**
- * Locates the repository-root `.env` by walking upward from the current
- * working directory. Works regardless of whether the process is started
- * from the repo root or a nested workspace folder. Existing environment
- * variables (e.g. injected by Docker) always take precedence.
- */
-function loadRootDotenv(): void {
-  let dir = process.cwd();
-  for (let i = 0; i < 6; i += 1) {
-    const candidate = path.join(dir, '.env');
-    if (fs.existsSync(candidate)) {
-      dotenv.config({ path: candidate });
-      return;
-    }
-    const parent = path.dirname(dir);
-    if (parent === dir) break;
-    dir = parent;
-  }
-}
-
-loadRootDotenv();
-
+let source: Record<string, string | undefined> | undefined;
 let cached: Env | null = null;
 
 /**
- * Loads and validates environment variables once per process.
- * Throws with actionable details when configuration is invalid.
+ * Points the environment resolver at an explicit source. Used by the
+ * Cloudflare Worker entry to inject bindings before any `env` access —
+ * `node:fs`/dotenv never runs on the edge.
+ */
+export function setEnvSource(s: Record<string, string | undefined>): void {
+  cached = null;
+  source = s;
+}
+
+/**
+ * Loads and validates the environment once. On Node the source is
+ * `process.env` (already populated by `config/dotenv`); on Workers it is the
+ * binding map supplied via `setEnvSource`. Throws with actionable details
+ * when configuration is invalid.
  */
 export function loadEnv(): Env {
   if (cached) return cached;
-  const { env, warnings } = parseEnv(process.env);
 
+  const { env, warnings } = parseEnv(source ?? process.env);
   for (const warning of warnings) {
     console.warn(`[env] ${warning}`);
   }
@@ -43,4 +31,17 @@ export function loadEnv(): Env {
   return env;
 }
 
-export const env = loadEnv();
+/**
+ * Lazily-resolved environment proxy. Property access triggers `loadEnv()` on
+ * first use, so the same module works on Node (reads `process.env`) and on
+ * Workers (reads bindings set before the first request). Consumers keep using
+ * `import { env } from '../config/env'` unchanged.
+ */
+export const env: Env = new Proxy({} as Env, {
+  get(_target, prop) {
+    return (loadEnv() as unknown as Record<PropertyKey, unknown>)[prop];
+  },
+  has(_target, prop) {
+    return prop in (loadEnv() as unknown as object);
+  },
+});

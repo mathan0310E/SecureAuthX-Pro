@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { ShieldCheck } from 'lucide-react';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { AppHeader } from '@/components/ui/app-header';
 
 /**
  * Centered shell for standalone auth pages (login, register, verify-email).
@@ -16,11 +17,12 @@ export function AuthShell({
   children: React.ReactNode;
 }) {
   return (
-    <div className="relative flex min-h-screen flex-col overflow-hidden">
+    <div className="relative flex min-h-screen flex-col overflow-x-clip">
       <div className="bg-grid pointer-events-none absolute inset-0 opacity-60 [mask-image:radial-gradient(ellipse_60%_50%_at_50%_-10%,black,transparent)]" />
+      <div className="bg-radial-fade pointer-events-none absolute inset-0" />
       <div className="pointer-events-none absolute -top-32 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full bg-primary/15 blur-3xl" />
 
-      <header className="relative z-10 mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-5">
+      <AppHeader>
         <Link href="/" className="flex items-center gap-2.5">
           <div className="flex size-9 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-violet-600 shadow-lg shadow-primary/25">
             <ShieldCheck className="size-5 text-white" aria-hidden="true" />
@@ -30,9 +32,9 @@ export function AuthShell({
           </span>
         </Link>
         <ThemeToggle />
-      </header>
+      </AppHeader>
 
-      <main className="relative z-10 flex flex-1 items-center justify-center px-6 pb-20">
+      <main className="relative z-10 flex flex-1 items-center justify-center px-6 pb-24">
         <div className="w-full max-w-md">
           <div className="mb-8 text-center">
             <h1 className="text-balance text-2xl font-semibold tracking-tight sm:text-3xl">

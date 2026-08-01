@@ -1,4 +1,4 @@
-import jwt, { type SignOptions } from 'jsonwebtoken';
+import { SignJWT, jwtVerify } from 'jose';
 import { randomUUID } from 'node:crypto';
 import type { JwtAccessPayload, JwtRefreshPayload, UserRole } from '@secureauthx/types';
 import { TOKEN_TTL } from '@secureauthx/config';
@@ -19,71 +19,75 @@ export interface AccessTokenClaims {
   sessionId: string;
 }
 
+/**
+ * JWT signing/verification backed by `jose` (WebCrypto) so it runs on
+ * Cloudflare Workers as well as Node.js. Token format (HS256 JWTs with
+ * standard iss/aud/exp/sub claims) is wire-compatible with the previous
+ * `jsonwebtoken` implementation.
+ */
 export class JwtService {
   constructor(private readonly config: JwtConfig) {}
 
-  createAccessToken(claims: AccessTokenClaims): string {
-    const payload: Omit<JwtAccessPayload, 'iat' | 'exp' | 'iss' | 'aud'> = {
-      sub: claims.userId,
+  private get accessKey(): Uint8Array {
+    return new TextEncoder().encode(this.config.accessSecret);
+  }
+
+  private get refreshKey(): Uint8Array {
+    return new TextEncoder().encode(this.config.refreshSecret);
+  }
+
+  async createAccessToken(claims: AccessTokenClaims): Promise<string> {
+    return new SignJWT({
       email: claims.email,
       role: claims.role,
       sessionId: claims.sessionId,
       type: 'access',
-    };
-
-    const options: SignOptions = {
-      algorithm: 'HS256',
-      issuer: this.config.issuer,
-      audience: this.config.audience,
-      expiresIn: this.config.accessTtl,
-    };
-
-    return jwt.sign(payload, this.config.accessSecret, options);
+    })
+      .setProtectedHeader({ alg: 'HS256' })
+      .setSubject(claims.userId)
+      .setIssuer(this.config.issuer)
+      .setAudience(this.config.audience)
+      .setIssuedAt()
+      .setExpirationTime(new Date(Date.now() + this.config.accessTtl * 1000))
+      .sign(this.accessKey);
   }
 
-  createRefreshToken(userId: string, jti: string, expiresInSeconds?: number): string {
-    const payload: Omit<JwtRefreshPayload, 'iat' | 'exp' | 'iss' | 'aud'> = {
-      sub: userId,
-      jti,
-      nonce: randomUUID(),
-      type: 'refresh',
-    };
-
-    const options: SignOptions = {
-      algorithm: 'HS256',
-      issuer: this.config.issuer,
-      audience: this.config.audience,
-      expiresIn: expiresInSeconds ?? this.config.refreshTtl,
-    };
-
-    return jwt.sign(payload, this.config.refreshSecret, options);
+  async createRefreshToken(userId: string, jti: string, expiresInSeconds?: number): Promise<string> {
+    return new SignJWT({ jti, nonce: randomUUID(), type: 'refresh' })
+      .setProtectedHeader({ alg: 'HS256' })
+      .setSubject(userId)
+      .setIssuer(this.config.issuer)
+      .setAudience(this.config.audience)
+      .setIssuedAt()
+      .setExpirationTime(new Date(Date.now() + (expiresInSeconds ?? this.config.refreshTtl) * 1000))
+      .sign(this.refreshKey);
   }
 
   /**
    * Verifies an access token. Returns the decoded payload or `null`
    * when the token is malformed/expired/wrong audience/issuer.
    */
-  verifyAccessToken(token: string): JwtAccessPayload | null {
+  async verifyAccessToken(token: string): Promise<JwtAccessPayload | null> {
     try {
-      const decoded = jwt.verify(token, this.config.accessSecret, {
+      const { payload } = await jwtVerify(token, this.accessKey, {
         issuer: this.config.issuer,
         audience: this.config.audience,
         algorithms: ['HS256'],
       });
-      return decoded as JwtAccessPayload;
+      return payload as unknown as JwtAccessPayload;
     } catch {
       return null;
     }
   }
 
-  verifyRefreshToken(token: string): JwtRefreshPayload | null {
+  async verifyRefreshToken(token: string): Promise<JwtRefreshPayload | null> {
     try {
-      const decoded = jwt.verify(token, this.config.refreshSecret, {
+      const { payload } = await jwtVerify(token, this.refreshKey, {
         issuer: this.config.issuer,
         audience: this.config.audience,
         algorithms: ['HS256'],
       });
-      return decoded as JwtRefreshPayload;
+      return payload as unknown as JwtRefreshPayload;
     } catch {
       return null;
     }

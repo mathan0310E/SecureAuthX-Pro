@@ -1,4 +1,3 @@
-import type { Request } from 'express';
 import {
   computeDeviceFingerprint,
   describeDevice,
@@ -9,6 +8,7 @@ import {
   getUserAgent,
   safeEqual,
   sha256,
+  type HttpRequestContext,
 } from '@secureauthx/shared';
 import { AUDIT_ACTION, COOKIE_NAMES, SECURITY_EVENT_TYPE } from '@secureauthx/config';
 import { resolveAccessToken } from '../middlewares/authenticate';
@@ -94,7 +94,7 @@ export class AuthService {
       lastName?: string;
       displayName?: string;
     },
-    req: Request
+    req: HttpRequestContext
   ): Promise<RegisterResponseData> {
     const { email, password, firstName, lastName, displayName } = input;
 
@@ -140,7 +140,7 @@ export class AuthService {
   private async issueVerificationToken(
     userId: string,
     email: string,
-    req: Request,
+    req: HttpRequestContext,
     mode: 'sent' | 'resent'
   ): Promise<void> {
     await this.deps.emailVerifications.revokePending(userId);
@@ -168,7 +168,7 @@ export class AuthService {
   // Email verification
   // ---------------------------------------------------------------------------
 
-  async verifyEmail(token: string, req: Request): Promise<VerifyEmailResponseData> {
+  async verifyEmail(token: string, req: HttpRequestContext): Promise<VerifyEmailResponseData> {
     const record = await this.deps.emailVerifications.findActiveByHash(sha256(token));
     if (!record) {
       throw Errors.badRequest('Verification token is invalid or has expired.');
@@ -192,7 +192,7 @@ export class AuthService {
     return { email: user.email, verified: true };
   }
 
-  async resendVerification(email: string, req: Request): Promise<ResendVerificationResponseData> {
+  async resendVerification(email: string, req: HttpRequestContext): Promise<ResendVerificationResponseData> {
     const user = await this.deps.users.findByEmail(email);
     if (user && !user.emailVerified) {
       await this.issueVerificationToken(user.id, user.email, req, 'resent');
@@ -207,7 +207,7 @@ export class AuthService {
 
   async login(
     input: { email: string; password: string; rememberMe?: boolean },
-    req: Request
+    req: HttpRequestContext
   ): Promise<LoginResponseData | MfaLoginResponseData> {
     const { email, password, rememberMe = false } = input;
     const ip = getClientIp(req);
@@ -316,7 +316,7 @@ export class AuthService {
   /** Completes a TOTP-challenged login and issues the session tokens. */
   async completeMfaTotp(
     input: { challengeId: string; code: string; rememberDevice: boolean },
-    req: Request
+    req: HttpRequestContext
   ): Promise<MfaLoginCompletion> {
     const { userId, deviceToken } = await this.deps.mfa.verifyTotpLogin(
       input.challengeId,
@@ -330,7 +330,7 @@ export class AuthService {
   /** Completes a recovery-code-challenged login. */
   async completeMfaRecovery(
     input: { challengeId: string; code: string },
-    req: Request
+    req: HttpRequestContext
   ): Promise<MfaLoginCompletion> {
     const userId = await this.deps.mfa.verifyRecoveryLogin(input.challengeId, input.code, req);
     return this.finishMfaLogin(userId, req, null);
@@ -350,7 +350,7 @@ export class AuthService {
       credential: Parameters<MfaService['verifyWebAuthnLogin']>[1];
       rememberDevice: boolean;
     },
-    req: Request
+    req: HttpRequestContext
   ): Promise<MfaLoginCompletion> {
     const { userId, deviceToken } = await this.deps.mfa.verifyWebAuthnLogin(
       input.challengeId,
@@ -363,7 +363,7 @@ export class AuthService {
 
   private async finishMfaLogin(
     userId: string,
-    req: Request,
+    req: HttpRequestContext,
     deviceToken: string | null
   ): Promise<MfaLoginCompletion> {
     const user = await this.deps.users.findById(userId);
@@ -398,13 +398,13 @@ export class AuthService {
     const refreshTtl = rememberMe ? env.JWT_REFRESH_TTL : env.SESSION_TIMEOUT_MINUTES * 60;
 
     const sessionId = generateUuid();
-    const accessToken = this.deps.jwt.createAccessToken({
+    const accessToken = await this.deps.jwt.createAccessToken({
       userId: user.id,
       email: user.email,
       role: user.role,
       sessionId,
     });
-    const refreshToken = this.deps.jwt.createRefreshToken(user.id, sessionId, refreshTtl);
+    const refreshToken = await this.deps.jwt.createRefreshToken(user.id, sessionId, refreshTtl);
     const csrfToken = generateCsrfToken();
 
     await this.deps.sessions.create({
@@ -430,8 +430,8 @@ export class AuthService {
     };
   }
 
-  async refresh(refreshToken: string, req: Request): Promise<RefreshResponseData> {
-    const payload = this.deps.jwt.verifyRefreshToken(refreshToken);
+  async refresh(refreshToken: string, req: HttpRequestContext): Promise<RefreshResponseData> {
+    const payload = await this.deps.jwt.verifyRefreshToken(refreshToken);
     if (!payload) {
       throw Errors.unauthorized('Invalid or expired refresh token.');
     }
@@ -463,8 +463,8 @@ export class AuthService {
     }
 
     const remainingTtl = Math.max(1, Math.ceil((session.expiresAt.getTime() - Date.now()) / 1000));
-    const newRefreshToken = this.deps.jwt.createRefreshToken(user.id, session.id, remainingTtl);
-    const accessToken = this.deps.jwt.createAccessToken({
+    const newRefreshToken = await this.deps.jwt.createRefreshToken(user.id, session.id, remainingTtl);
+    const accessToken = await this.deps.jwt.createAccessToken({
       userId: user.id,
       email: user.email,
       role: user.role,
@@ -496,7 +496,7 @@ export class AuthService {
    * cookie (works even when the access token has expired) and falls back
    * to the access token. Idempotent — always succeeds for the caller.
    */
-  async logout(req: Request): Promise<{ revoked: boolean; userId: string | null }> {
+  async logout(req: HttpRequestContext): Promise<{ revoked: boolean; userId: string | null }> {
     const accessToken = resolveAccessToken(req);
     const refreshToken =
       typeof req.cookies?.[COOKIE_NAMES.REFRESH_TOKEN] === 'string'
@@ -507,12 +507,12 @@ export class AuthService {
     let userId: string | null = null;
 
     if (refreshToken) {
-      const payload = this.deps.jwt.verifyRefreshToken(refreshToken);
+      const payload = await this.deps.jwt.verifyRefreshToken(refreshToken);
       sessionId = payload?.jti ?? null;
       userId = payload?.sub ?? null;
     }
     if (!sessionId && accessToken) {
-      const payload = this.deps.jwt.verifyAccessToken(accessToken);
+      const payload = await this.deps.jwt.verifyAccessToken(accessToken);
       sessionId = payload?.sessionId ?? null;
       userId = payload?.sub ?? null;
     }

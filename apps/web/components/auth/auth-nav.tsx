@@ -63,7 +63,7 @@ export function AuthNav({ className }: { className?: string }) {
             await signOut();
             router.replace('/');
           }}
-          className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+          className="inline-flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
         >
           <LogOut className="size-3.5" aria-hidden="true" />
           Sign out

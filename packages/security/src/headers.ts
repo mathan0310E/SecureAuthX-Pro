@@ -1,15 +1,29 @@
+import { secureHeaders } from 'hono/secure-headers';
+
+type SecureHeadersOptions = NonNullable<Parameters<typeof secureHeaders>[0]>;
+
 /**
- * Security headers configuration applied via Helmet in the API gateway.
+ * Security headers configuration for the Hono gateway.
  * CSP values assume the web app is served from the configured WEB_URL.
  */
-export function buildSecurityHeadersConfig(webUrl: string, isProd: boolean) {
+export function buildSecureHeadersOptions(webUrl: string, isProd: boolean): SecureHeadersOptions {
   const self = "'self'";
   const webOrigin = new URL(webUrl).origin;
 
   return {
-    contentSecurityPolicy: isProd
+    xContentTypeOptions: true,
+    referrerPolicy: 'strict-origin-when-cross-origin',
+    crossOriginResourcePolicy: 'same-origin',
+    permissionsPolicy: {
+      geolocation: [],
+      microphone: [],
+      camera: [],
+      payment: [],
+      usb: [],
+    },
+    ...(isProd
       ? {
-          directives: {
+          contentSecurityPolicy: {
             defaultSrc: [self],
             scriptSrc: [self, webOrigin],
             styleSrc: [self, "'unsafe-inline'", webOrigin],
@@ -22,20 +36,8 @@ export function buildSecurityHeadersConfig(webUrl: string, isProd: boolean) {
             frameAncestors: ["'none'"],
             upgradeInsecureRequests: [],
           },
+          strictTransportSecurity: 'max-age=63072000; includeSubDomains; preload',
         }
-      : false, // Dev: no CSP to keep HMR and React devtools working
-    referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
-    strictTransportSecurity: isProd
-      ? { maxAge: 63072000, includeSubDomains: true, preload: true }
-      : false,
-    crossOriginEmbedderPolicy: false,
-    crossOriginResourcePolicy: { policy: 'same-origin' },
-    permissionsPolicy: {
-      geolocation: [],
-      microphone: [],
-      camera: [],
-      payment: [],
-      usb: [],
-    },
+      : {}),
   };
 }

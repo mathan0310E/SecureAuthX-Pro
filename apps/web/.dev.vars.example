@@ -1,0 +1,11 @@
+# Local development secrets for Cloudflare Workers.
+# Copy to `.dev.vars` (never commit) for `pnpm preview:cloudflare` / `wrangler dev`.
+#
+# NOTE: API_URL / WEB_URL / NEXT_PUBLIC_* are read at BUILD time by Next.js,
+# so for local previews set them when running the build step instead:
+#   API_URL=http://localhost:4000 WEB_URL=http://localhost:3000 pnpm build:cloudflare
+# then `pnpm preview:cloudflare`.
+
+# Runtime (non-secret) vars are already declared in wrangler.jsonc -> "vars".
+# Secrets go here, e.g.:
+# API_KEY=your-secret-here

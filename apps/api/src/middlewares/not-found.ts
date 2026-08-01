@@ -1,13 +1,18 @@
-import type { Request, Response } from 'express';
+import type { NotFoundHandler } from 'hono';
+import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import { Errors } from '../utils/errors';
+import type { AppEnv } from '../types/context';
 
-export function notFoundHandler(req: Request, res: Response): void {
-  const error = Errors.notFound(`Route ${req.method} ${req.path} not found.`);
-  res.status(error.statusCode).json({
-    status: 'error',
-    code: error.code,
-    message: error.message,
-    requestId: req.id,
-    timestamp: new Date().toISOString(),
-  });
-}
+export const notFoundHandler: NotFoundHandler<AppEnv> = (c) => {
+  const error = Errors.notFound(`Route ${c.req.method} ${new URL(c.req.url).pathname} not found.`);
+  return c.json(
+    {
+      status: 'error',
+      code: error.code,
+      message: error.message,
+      requestId: c.get('requestId') ?? 'unknown',
+      timestamp: new Date().toISOString(),
+    },
+    error.statusCode as ContentfulStatusCode
+  );
+};

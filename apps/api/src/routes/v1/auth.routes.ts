@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Hono } from 'hono';
 import { createAuthRateLimiter } from '@secureauthx/security';
 import {
   loginSchema,
@@ -12,12 +12,13 @@ import { createBoundAuthMiddleware } from '../../middlewares/bound-auth';
 import { requireCsrf } from '../../middlewares/csrf';
 import { validate } from '../../middlewares/validate';
 import { authController } from '../../controllers/auth.controller';
+import type { AppEnv } from '../../types/context';
 
 /**
  * /api/v1/auth — registration, authentication, and session refresh.
  */
-export function createAuthRouter(container: AppContainer): Router {
-  const router = Router();
+export function createAuthRouter(container: AppContainer): Hono<AppEnv> {
+  const router = new Hono<AppEnv>();
   const authRequired = createBoundAuthMiddleware(container);
   const authLimiter = createAuthRateLimiter({
     windowMs: env.RATE_LIMIT_WINDOW_MS,

@@ -1,5 +1,3 @@
-import type { Request, Response } from 'express';
-import { asyncHandler } from '@secureauthx/shared';
 import type { MfaLoginCompletion } from '../services/auth.service';
 import { ok } from '../utils/response';
 import {
@@ -8,20 +6,21 @@ import {
   setTrustedDeviceCookie,
 } from '../utils/cookies';
 import { env } from '../config/env';
+import { toRequestContext } from '../utils/request-context';
+import type { AppContext } from '../types/context';
 
 function completeMfaAuthFlow(
-  req: Request,
-  res: Response,
+  c: AppContext,
   code: string,
   message: string,
   data: MfaLoginCompletion
-): void {
-  clearMfaChallengeCookie(res);
-  setAuthCookies(res, data.tokens, env.JWT_ACCESS_TTL, data.tokens.expiresIn);
+): Response {
+  clearMfaChallengeCookie(c);
+  setAuthCookies(c, data.tokens, env.JWT_ACCESS_TTL, data.tokens.expiresIn);
   if (data.deviceToken) {
-    setTrustedDeviceCookie(res, data.deviceToken, env.TRUSTED_DEVICE_TTL_DAYS * 86400);
+    setTrustedDeviceCookie(c, data.deviceToken, env.TRUSTED_DEVICE_TTL_DAYS * 86400);
   }
-  ok(req, res, code, message, data);
+  return ok(c, code, message, data);
 }
 
 /**
@@ -33,78 +32,91 @@ export const mfaController = {
   // Login completion (challenge-gated)
   // -------------------------------------------------------------------------
 
-  verifyTotp: asyncHandler(async (req: Request, res: Response) => {
-    const data = await req.container!.auth.completeMfaTotp(req.body, req);
-    completeMfaAuthFlow(req, res, 'MFA_VERIFIED', 'Authentication code accepted.', data);
-  }),
+  verifyTotp: async (c: AppContext) => {
+    const body = await c.req.json();
+    const data = await c.get('container').auth.completeMfaTotp(body, toRequestContext(c));
+    return completeMfaAuthFlow(c, 'MFA_VERIFIED', 'Authentication code accepted.', data);
+  },
 
-  verifyRecovery: asyncHandler(async (req: Request, res: Response) => {
-    const data = await req.container!.auth.completeMfaRecovery(req.body, req);
-    completeMfaAuthFlow(req, res, 'MFA_VERIFIED', 'Recovery code accepted.', data);
-  }),
+  verifyRecovery: async (c: AppContext) => {
+    const body = await c.req.json();
+    const data = await c.get('container').auth.completeMfaRecovery(body, toRequestContext(c));
+    return completeMfaAuthFlow(c, 'MFA_VERIFIED', 'Recovery code accepted.', data);
+  },
 
-  beginWebAuthnVerify: asyncHandler(async (req: Request, res: Response) => {
-    const data = await req.container!.auth.beginWebAuthnMfaLogin(req.body.challengeId);
-    ok(req, res, 'WEBAUTHN_CHALLENGE_READY', 'Security key challenge ready.', data);
-  }),
+  beginWebAuthnVerify: async (c: AppContext) => {
+    const body = await c.req.json();
+    const data = await c.get('container').auth.beginWebAuthnMfaLogin(body.challengeId);
+    return ok(c, 'WEBAUTHN_CHALLENGE_READY', 'Security key challenge ready.', data);
+  },
 
-  verifyWebAuthn: asyncHandler(async (req: Request, res: Response) => {
-    const data = await req.container!.auth.completeWebAuthnMfa(req.body, req);
-    completeMfaAuthFlow(req, res, 'MFA_VERIFIED', 'Security key accepted.', data);
-  }),
+  verifyWebAuthn: async (c: AppContext) => {
+    const body = await c.req.json();
+    const data = await c.get('container').auth.completeWebAuthnMfa(body, toRequestContext(c));
+    return completeMfaAuthFlow(c, 'MFA_VERIFIED', 'Security key accepted.', data);
+  },
 
   // -------------------------------------------------------------------------
   // Status & settings (authenticated)
   // -------------------------------------------------------------------------
 
-  status: asyncHandler(async (req: Request, res: Response) => {
-    const data = await req.container!.mfa.getStatus(req.user!.id);
-    ok(req, res, 'MFA_STATUS', 'MFA status.', data);
-  }),
+  status: async (c: AppContext) => {
+    const data = await c.get('container').mfa.getStatus(c.get('user')!.id);
+    return ok(c, 'MFA_STATUS', 'MFA status.', data);
+  },
 
-  startTotp: asyncHandler(async (req: Request, res: Response) => {
-    const data = await req.container!.mfa.beginTotpEnrollment(req.user!.id);
-    ok(req, res, 'TOTP_SETUP_STARTED', 'Scan the QR code with your authenticator app.', data);
-  }),
+  startTotp: async (c: AppContext) => {
+    const data = await c.get('container').mfa.beginTotpEnrollment(c.get('user')!.id);
+    return ok(c, 'TOTP_SETUP_STARTED', 'Scan the QR code with your authenticator app.', data);
+  },
 
-  verifyTotpEnrollment: asyncHandler(async (req: Request, res: Response) => {
-    const data = await req.container!.mfa.completeTotpEnrollment(req.user!.id, req.body.code, req);
-    ok(req, res, 'TOTP_ENABLED', 'Authenticator app enabled. Store your recovery codes.', data);
-  }),
+  verifyTotpEnrollment: async (c: AppContext) => {
+    const body = await c.req.json();
+    const data = await c
+      .get('container')
+      .mfa.completeTotpEnrollment(c.get('user')!.id, body.code, toRequestContext(c));
+    return ok(c, 'TOTP_ENABLED', 'Authenticator app enabled. Store your recovery codes.', data);
+  },
 
-  startWebAuthn: asyncHandler(async (req: Request, res: Response) => {
-    const data = await req.container!.mfa.beginWebAuthnRegistration(req.user!.id);
-    ok(req, res, 'WEBAUTHN_SETUP_STARTED', 'Security key registration started.', data);
-  }),
+  startWebAuthn: async (c: AppContext) => {
+    const data = await c.get('container').mfa.beginWebAuthnRegistration(c.get('user')!.id);
+    return ok(c, 'WEBAUTHN_SETUP_STARTED', 'Security key registration started.', data);
+  },
 
-  verifyWebAuthnEnrollment: asyncHandler(async (req: Request, res: Response) => {
-    const data = await req.container!.mfa.completeWebAuthnRegistration(
-      req.body.challengeId,
-      req.user!.id,
-      req.body.deviceName ?? '',
-      req.body.registration,
-      req
+  verifyWebAuthnEnrollment: async (c: AppContext) => {
+    const body = await c.req.json();
+    const data = await c.get('container').mfa.completeWebAuthnRegistration(
+      body.challengeId,
+      c.get('user')!.id,
+      body.deviceName ?? '',
+      body.registration,
+      toRequestContext(c)
     );
-    ok(req, res, 'WEBAUTHN_ENABLED', 'Security key registered. Store your recovery codes.', data);
-  }),
+    return ok(c, 'WEBAUTHN_ENABLED', 'Security key registered. Store your recovery codes.', data);
+  },
 
-  regenerateRecoveryCodes: asyncHandler(async (req: Request, res: Response) => {
-    const data = await req.container!.mfa.regenerateRecoveryCodesWithPassword(
-      req.user!.id,
-      req.body.password,
-      req
+  regenerateRecoveryCodes: async (c: AppContext) => {
+    const body = await c.req.json();
+    const data = await c.get('container').mfa.regenerateRecoveryCodesWithPassword(
+      c.get('user')!.id,
+      body.password,
+      toRequestContext(c)
     );
-    ok(req, res, 'RECOVERY_CODES_REGENERATED', 'New recovery codes generated.', data);
-  }),
+    return ok(c, 'RECOVERY_CODES_REGENERATED', 'New recovery codes generated.', data);
+  },
 
-  removeWebAuthn: asyncHandler(async (req: Request, res: Response) => {
-    await req.container!.mfa.removeWebAuthnCredential(req.user!.id, req.body.credentialId, req);
-    ok(req, res, 'WEBAUTHN_REMOVED', 'Security key removed.', { removed: true });
-  }),
+  removeWebAuthn: async (c: AppContext) => {
+    const body = await c.req.json();
+    await c
+      .get('container')
+      .mfa.removeWebAuthnCredential(c.get('user')!.id, body.credentialId, toRequestContext(c));
+    return ok(c, 'WEBAUTHN_REMOVED', 'Security key removed.', { removed: true });
+  },
 
-  disable: asyncHandler(async (req: Request, res: Response) => {
-    await req.container!.mfa.disable(req.user!.id, req.body.password, req);
-    clearMfaChallengeCookie(res);
-    ok(req, res, 'MFA_DISABLED', 'Multi-factor authentication has been disabled.', { disabled: true });
-  }),
+  disable: async (c: AppContext) => {
+    const body = await c.req.json();
+    await c.get('container').mfa.disable(c.get('user')!.id, body.password, toRequestContext(c));
+    clearMfaChallengeCookie(c);
+    return ok(c, 'MFA_DISABLED', 'Multi-factor authentication has been disabled.', { disabled: true });
+  },
 };

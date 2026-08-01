@@ -1,0 +1,35 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "secureauthx-pro-web",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-07-01",
+  "compatibility_flags": [
+    // Enable Node.js APIs (required by @opennextjs/cloudflare)
+    "nodejs_compat",
+    // Allow the Worker to fetch public URLs (required by OpenNext)
+    "global_fetch_strictly_public"
+  ],
+  // Static assets built by `opennextjs-cloudflare build`.
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "services": [
+    {
+      // Self-reference binding used internally by OpenNext.
+      // The service name MUST match the "name" of this Worker.
+      "binding": "WORKER_SELF_REFERENCE",
+      "service": "secureauthx-pro-web"
+    }
+  ],
+  "vars": {
+    // Build-time vars are handled by CI; runtime vars (non-secret) go here.
+    "NODE_ENV": "production"
+  },
+  // Disable esbuild `keep_names` to avoid `__name` helpers that break
+  // Next.js script stringification at runtime.
+  "keep_names": false,
+  "observability": {
+    "enabled": true
+  }
+}

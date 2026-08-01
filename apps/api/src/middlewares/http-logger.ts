@@ -1,37 +1,24 @@
-import morgan from 'morgan';
-import type { Request, Response } from 'express';
+import type { MiddlewareHandler } from 'hono';
 import { logger } from '../config/logger';
+import type { AppEnv } from '../types/context';
 
 /**
- * HTTP access logging via morgan, streamed into Winston.
+ * HTTP access logging for the Hono gateway.
  * Tracks method, URL, status, response time, and request id.
  */
-export const httpLogger = morgan(
-  (tokens, req: Request, res: Response) => {
-    const pick = <T>(fn: ((req: Request, res: Response) => T) | undefined): T | null =>
-      fn ? fn(req, res) : null;
+export const httpLogger: MiddlewareHandler<AppEnv> = async (c, next) => {
+  const startedAt = Date.now();
+  await next();
 
-    return JSON.stringify({
-      method: pick(tokens.method),
-      url: pick(tokens.url),
-      status: pick(tokens.status),
-      contentLength: pick((r, s) => tokens.res?.(r, s, 'content-length') as string),
-      responseTimeMs: pick(tokens['response-time']),
-      requestId: (req as Request & { id?: string }).id ?? 'unknown',
-      remoteAddr: pick(tokens['remote-addr']),
-      userAgent: pick(tokens['user-agent']),
-    });
-  },
-  {
-    stream: {
-      write: (line: string) => {
-        try {
-          logger.http(JSON.parse(line));
-        } catch {
-          logger.http(line.trim());
-        }
-      },
-    },
-    skip: (req) => req.path === '/health' && req.method === 'GET',
-  }
-);
+  const path = new URL(c.req.url).pathname;
+  if (path === '/health' && c.req.method === 'GET') return;
+
+  logger.http('HTTP request', {
+    method: c.req.method,
+    url: c.req.url,
+    status: c.res.status,
+    responseTimeMs: Date.now() - startedAt,
+    requestId: c.get('requestId'),
+    userAgent: c.req.header('user-agent'),
+  });
+};

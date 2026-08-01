@@ -1,7 +1,7 @@
-import type { Request, Response } from 'express';
-import { asyncHandler } from '@secureauthx/shared';
+import type { ContentfulStatusCode } from 'hono/utils/http-status';
+import type { AppContext } from '../types/context';
 
-/** Consistent success envelope helper. */
+/** Consistent success envelope payload. */
 export function success<T>(code: string, message: string, data: T) {
   return {
     status: 'success' as const,
@@ -14,18 +14,25 @@ export function success<T>(code: string, message: string, data: T) {
 }
 
 /**
- * Variant of the success helper that reads `req.id` so the response
- * carries the request trace id.
+ * Sends the success envelope with the request trace id stamped in, using the
+ * Hono context so controllers stay thin and stateless.
  */
-export function ok<T>(req: Request, res: Response, code: string, message: string, data: T): void {
-  res.json({
-    status: 'success',
-    code,
-    message,
-    data,
-    requestId: req.id,
-    timestamp: new Date().toISOString(),
-  });
+export function ok<T>(
+  c: AppContext,
+  code: string,
+  message: string,
+  data: T,
+  status: ContentfulStatusCode = 200
+): Response {
+  return c.json(
+    {
+      status: 'success',
+      code,
+      message,
+      data,
+      requestId: c.get('requestId'),
+      timestamp: new Date().toISOString(),
+    },
+    status
+  );
 }
-
-export { asyncHandler };

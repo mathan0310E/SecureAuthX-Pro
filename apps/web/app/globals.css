@@ -172,6 +172,30 @@
   ::selection {
     background-color: color-mix(in oklab, var(--primary) 25%, transparent);
   }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    border: 2px solid transparent;
+    border-radius: 9999px;
+    background-color: color-mix(in oklab, var(--muted-foreground) 25%, transparent);
+    background-clip: padding-box;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: color-mix(in oklab, var(--muted-foreground) 40%, transparent);
+  }
+
+  :focus-visible {
+    outline-color: var(--ring);
+  }
 }
 
 @utility glass {
@@ -193,4 +217,18 @@
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+}
+
+@utility glow {
+  box-shadow:
+    0 0 0 1px color-mix(in oklab, var(--primary) 25%, transparent),
+    0 0 36px -6px color-mix(in oklab, var(--primary) 50%, transparent);
+}
+
+@utility bg-radial-fade {
+  background-image: radial-gradient(
+    ellipse 60% 45% at 50% -5%,
+    color-mix(in oklab, var(--primary) 12%, transparent),
+    transparent 70%
+  );
 }

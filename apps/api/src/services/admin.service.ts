@@ -9,8 +9,7 @@ import type { AccountStatus, UserRole } from '@secureauthx/types';
 import { Prisma } from '@secureauthx/database';
 import type { PrismaClient } from '@secureauthx/database';
 import type { UserRepository, SessionRepository, AuditRepository, SecurityRepository } from '@secureauthx/database';
-import type { Request } from 'express';
-import { resolvePagination, buildPaginationMeta } from '@secureauthx/shared';
+import { resolvePagination, buildPaginationMeta, type HttpRequestContext } from '@secureauthx/shared';
 import { AUDIT_ACTION } from '@secureauthx/config';
 import { Errors } from '../utils/errors';
 
@@ -73,7 +72,7 @@ export class AdminService {
     actorId: string,
     userId: string,
     role: UserRole,
-    req: Request
+    req: HttpRequestContext
   ): Promise<{ id: string; email: string; role: UserRole }> {
     const user = await this.deps.users.findById(userId);
     if (!user) throw Errors.notFound('User not found.');
@@ -98,7 +97,7 @@ export class AdminService {
     actorId: string,
     userId: string,
     status: AccountStatus,
-    req: Request
+    req: HttpRequestContext
   ): Promise<{ id: string; email: string; status: AccountStatus }> {
     const user = await this.deps.users.findById(userId);
     if (!user) throw Errors.notFound('User not found.');

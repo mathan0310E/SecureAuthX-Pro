@@ -1,19 +1,31 @@
+import './config/dotenv';
+
+import { serve, type ServerType } from '@hono/node-server';
 import { env } from './config/env';
 import { prisma } from './config/prisma';
-import { redis, closeRedis } from './config/redis';
+import { cache } from './config/cache';
 import { buildContainer } from './config/container';
 import { logger } from './config/logger';
-import { createApp, listen } from './app';
+import { createApp } from './app';
+
+let server: ServerType | undefined;
 
 async function bootstrap(): Promise<void> {
-  const container = buildContainer(prisma, redis);
+  const container = buildContainer(prisma, cache);
   const app = createApp(container);
 
   // Verify database connectivity before accepting traffic.
   await prisma.$queryRaw`SELECT 1`;
   logger.info('Database connection verified.');
 
-  listen(app);
+  server = serve(
+    { fetch: app.fetch, port: env.API_PORT, hostname: env.API_BIND_ADDRESS },
+    () => {
+      logger.info(
+        `${env.APP_NAME} listening on http://${env.API_BIND_ADDRESS}:${env.API_PORT} (${env.NODE_ENV})`
+      );
+    }
+  );
 }
 
 bootstrap().catch((error) => {
@@ -35,8 +47,9 @@ async function shutdown(signal: string): Promise<void> {
   logger.info(`Received ${signal}; shutting down gracefully...`);
 
   try {
-    await closeRedis();
+    await cache.close();
     await prisma.$disconnect();
+    server?.close();
   } finally {
     process.exit(0);
   }

@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { RequireAuth } from '@/components/auth/require-auth';
 import { AuthNav } from '@/components/auth/auth-nav';
+import { AppHeader } from '@/components/ui/app-header';
 import { securityApi, type SecurityFeedQuery } from '@/lib/api/security';
 import {
   Button,
@@ -97,7 +98,7 @@ function FeedCard({
       <CardHeader>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="flex size-8 items-center justify-center rounded-lg border bg-background">
+            <span className="flex size-8 items-center justify-center rounded-lg border bg-gradient-to-br from-primary/10 to-violet-500/10">
               <FileText className="size-4 text-primary" aria-hidden="true" />
             </span>
             <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
@@ -215,10 +216,11 @@ function ActivityContent() {
   }));
 
   return (
-    <div className="relative min-h-screen overflow-hidden">
+    <div className="relative min-h-screen overflow-x-clip">
       <div className="bg-grid pointer-events-none absolute inset-0 opacity-60 [mask-image:radial-gradient(ellipse_60%_50%_at_50%_-10%,black,transparent)]" />
+      <div className="bg-radial-fade pointer-events-none absolute inset-0" />
 
-      <header className="relative z-10 mx-auto flex w-full max-w-4xl items-center justify-between px-6 py-5">
+      <AppHeader>
         <Link href="/dashboard" className="flex items-center gap-2.5">
           <div className="flex size-9 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-violet-600 shadow-lg shadow-primary/25">
             <ShieldCheck className="size-5 text-white" aria-hidden="true" />
@@ -226,10 +228,10 @@ function ActivityContent() {
           <span className="text-base font-semibold tracking-tight">SecureAuthX Pro</span>
         </Link>
         <AuthNav />
-      </header>
+      </AppHeader>
 
-      <main className="relative z-10 mx-auto w-full max-w-4xl px-6 pb-24">
-        <section className="pt-10">
+      <main className="relative z-10 mx-auto w-full max-w-4xl px-6 pb-28">
+        <section className="pt-12">
           <div className="flex items-center gap-2">
             <Activity className="size-6 text-primary" aria-hidden="true" />
             <h1 className="text-3xl font-semibold tracking-tight">Security activity</h1>
@@ -240,7 +242,7 @@ function ActivityContent() {
           </p>
         </section>
 
-        <div className="mt-6 flex gap-1 rounded-xl border bg-card p-1">
+        <div className="mt-8 flex gap-1 rounded-xl border bg-card p-1">
           {(
             [
               { id: 'audit', label: 'Audit log' },
@@ -266,7 +268,7 @@ function ActivityContent() {
           ))}
         </div>
 
-        <section className="mt-6">
+        <section className="mt-8">
           {tab === 'audit' ? (
             <FeedCard
               title="Audit log"

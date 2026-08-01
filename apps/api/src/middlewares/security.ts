@@ -1,38 +1,38 @@
-import helmet from 'helmet';
-import cors from 'cors';
-import compression from 'compression';
-import { buildSecurityHeadersConfig, createRateLimiter } from '@secureauthx/security';
+import { secureHeaders } from 'hono/secure-headers';
+import { cors } from 'hono/cors';
+import { compress } from 'hono/compress';
+import type { Hono } from 'hono';
+import { buildSecureHeadersOptions, createRateLimiter } from '@secureauthx/security';
 import { env } from '../config/env';
+import type { AppEnv } from '../types/context';
 
 /**
  * Global security posture for the API gateway:
- * - Helmet security headers (CSP, HSTS, referrer policy, permissions policy)
+ * - Security headers (CSP, HSTS, referrer policy, permissions policy)
  * - CORS restricted to configured origins
  * - Response compression
  */
-export function configureSecurity(app: { use: (mw: unknown) => void }): void {
+export function configureSecurity(app: Hono<AppEnv>): void {
   const isProd = env.NODE_ENV === 'production';
 
-  app.use(helmet(buildSecurityHeadersConfig(env.WEB_URL, isProd) as Parameters<typeof helmet>[0]));
+  app.use('*', secureHeaders(buildSecureHeadersOptions(env.WEB_URL, isProd)));
 
   app.use(
+    '*',
     cors({
-      origin: (origin, callback) => {
+      origin: (origin) => {
         // Allow requests without an Origin (curl, server-to-server, healthchecks)
-        if (!origin) return callback(null, true);
-        if (env.API_CORS_ORIGINS.includes(origin)) {
-          return callback(null, true);
-        }
-        return callback(new Error('Not allowed by CORS'));
+        if (!origin) return null;
+        return env.API_CORS_ORIGINS.includes(origin) ? origin : null;
       },
       credentials: true,
-      exposedHeaders: ['x-request-id'],
-      methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+      exposeHeaders: ['x-request-id'],
+      allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
       maxAge: 86400,
     })
   );
 
-  app.use(compression());
+  app.use('*', compress());
 }
 
 /**

@@ -11,7 +11,8 @@ export const metadata: Metadata = {
 export default function LoginPage() {
   return (
     <AuthShell title="Welcome back" subtitle="Sign in to your SecureAuthX Pro account.">
-      <div className="glass rounded-2xl p-6 shadow-2xl shadow-black/10 sm:p-8">
+      <div className="glass relative overflow-hidden rounded-2xl p-6 shadow-2xl shadow-black/10 ring-1 ring-primary/5 sm:p-9">
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-primary via-violet-500 to-fuchsia-500" />
         <LoginForm />
       </div>
       <p className="mt-6 text-center text-sm text-muted-foreground">

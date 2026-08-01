@@ -116,7 +116,8 @@ export default function VerifyEmailPage() {
       title="Verify your email"
       subtitle="Confirming your email address completes your account setup."
     >
-      <div className="glass rounded-2xl p-6 shadow-2xl shadow-black/10 sm:p-8">
+      <div className="glass relative overflow-hidden rounded-2xl p-6 shadow-2xl shadow-black/10 ring-1 ring-primary/5 sm:p-9">
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-primary via-violet-500 to-fuchsia-500" />
         <Suspense
           fallback={
             <div className="flex flex-col items-center gap-4 py-8">

@@ -1,5 +1,5 @@
-import express, { type Express, type NextFunction, type Request, type Response } from 'express';
-import cookieParser from 'cookie-parser';
+import { Hono } from 'hono';
+import { bodyLimit } from 'hono/body-limit';
 import { env } from './config/env';
 import { configureSecurity } from './middlewares/security';
 import { requestIdMiddleware } from './middlewares/request-id';
@@ -8,48 +8,39 @@ import { containerMiddleware } from './middlewares/container';
 import { errorHandler } from './middlewares/error-handler';
 import { notFoundHandler } from './middlewares/not-found';
 import { createApiRouter } from './routes';
+import { createHealthRouter } from './routes/v1/health.routes';
+import { AppError } from './utils/errors';
 import type { AppContainer } from './config/container';
+import type { AppEnv } from './types/context';
 
 /**
- * Composes the Express application. Exported as a factory so tests can
+ * Composes the Hono application. Exported as a factory so tests can
  * create isolated instances with a mocked container.
  */
-export function createApp(container: AppContainer): Express {
-  const app = express();
+export function createApp(container: AppContainer): Hono<AppEnv> {
+  const app = new Hono<AppEnv>();
 
-  app.disable('x-powered-by');
-  app.set('trust proxy', 1);
-
-  app.use(requestIdMiddleware);
-  app.use(httpLogger);
+  app.use('*', requestIdMiddleware);
+  app.use('*', httpLogger);
+  app.use('*', containerMiddleware(container));
 
   configureSecurity(app);
 
-  app.use(express.json({ limit: '1mb' }));
-  app.use(express.urlencoded({ extended: false, limit: '1mb' }));
-  app.use(cookieParser());
-
-  app.use(containerMiddleware(container));
-
-  app.use('/api', createApiRouter(container));
-
-  // Liveness probe at the root for plain-Docker healthchecks.
-  app.get('/health', (_req: Request, res: Response) => {
-    res.status(200).json({ status: 'success', message: 'OK' });
-  });
-
-  app.use(notFoundHandler);
-  app.use((err: unknown, req: Request, res: Response, next: NextFunction) =>
-    errorHandler(err, req, res, next)
+  app.use(
+    '*',
+    bodyLimit({
+      maxSize: 1024 * 1024,
+      onError: () => {
+        throw new AppError(413, 'PAYLOAD_TOO_LARGE', 'Request body too large.');
+      },
+    })
   );
+
+  app.route('/health', createHealthRouter());
+  app.route('/api', createApiRouter(container));
+
+  app.notFound(notFoundHandler);
+  app.onError(errorHandler);
 
   return app;
 }
-
-export const listen = (app: Express): void => {
-  const port = env.API_PORT;
-  const host = env.API_BIND_ADDRESS;
-  app.listen(port, host, () => {
-    console.log(`[api] ${env.APP_NAME} listening on http://${host}:${port} (${env.NODE_ENV})`);
-  });
-};

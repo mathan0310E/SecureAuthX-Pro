@@ -1,6 +1,7 @@
-import nodemailer, { type Transporter } from 'nodemailer';
-import type SMTPTransport from 'nodemailer/lib/smtp-transport';
 import { buildPasswordResetEmail, buildVerificationEmail } from './templates';
+import { ConsoleMailTransport, ResendMailTransport, type MailMessage, type MailTransport } from './transports';
+
+export type MailProvider = 'console' | 'resend';
 
 export interface MailLogger {
   info(msg: string, meta?: Record<string, unknown>): void;
@@ -8,25 +9,37 @@ export interface MailLogger {
 }
 
 export interface MailServiceConfig {
-  host: string;
-  port: number;
-  secure: boolean;
-  user?: string;
-  password?: string;
   from: string;
   appName: string;
   webUrl: string;
+  /** Delivery provider. `console` (default) logs messages; `resend` uses the REST API. */
+  provider?: MailProvider;
+  /** Resend API key — required when `provider: 'resend'`. */
+  resendApiKey?: string;
   logger?: MailLogger;
 }
 
+function createTransport(config: MailServiceConfig): MailTransport {
+  if (config.provider === 'resend') {
+    if (!config.resendApiKey) {
+      throw new Error('MailService: provider "resend" requires resendApiKey.');
+    }
+    return new ResendMailTransport({ apiKey: config.resendApiKey });
+  }
+  return new ConsoleMailTransport({
+    log: (line) => config.logger?.info(line) ?? console.info(line),
+  });
+}
+
 /**
- * Transactional email delivery over SMTP.
- * Failures are never thrown to callers — a warning is logged instead so a
- * mailbox outage cannot block registration or other critical flows.
+ * Transactional email delivery over a pluggable transport (console in dev,
+ * Resend REST in production). Failures are never thrown to callers — a
+ * warning is logged instead so a mailbox outage cannot block registration
+ * or other critical flows.
  */
 export class MailService {
-  private readonly transporter: Transporter;
-  private readonly config: Omit<MailServiceConfig, 'host' | 'port' | 'secure' | 'user' | 'password'>;
+  private readonly transport: MailTransport;
+  private readonly config: Omit<MailServiceConfig, 'provider' | 'resendApiKey'>;
 
   constructor(config: MailServiceConfig) {
     this.config = {
@@ -35,28 +48,19 @@ export class MailService {
       webUrl: config.webUrl,
       logger: config.logger,
     };
-
-    const options: SMTPTransport.Options = {
-      host: config.host,
-      port: config.port,
-      secure: config.secure,
-    };
-    if (config.user) {
-      options.auth = { user: config.user, pass: config.password ?? '' };
-    }
-
-    this.transporter = nodemailer.createTransport(options);
+    this.transport = createTransport(config);
   }
 
   async send(to: string, subject: string, html: string, text: string): Promise<void> {
-    await this.transporter.sendMail({
+    const message: MailMessage = {
       from: this.config.from,
       to,
       subject,
       html,
       text,
-    });
-    this.config.logger?.info('Email delivered', { to });
+    };
+    await this.transport.send(message);
+    this.config.logger?.info('Email delivered', { to, transport: this.transport.name });
   }
 
   /**

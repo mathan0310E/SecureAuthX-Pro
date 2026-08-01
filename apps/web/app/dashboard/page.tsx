@@ -13,6 +13,7 @@ import {
 import { useAuth } from '@/components/providers/auth-provider';
 import { RequireAuth } from '@/components/auth/require-auth';
 import { AuthNav } from '@/components/auth/auth-nav';
+import { AppHeader } from '@/components/ui/app-header';
 import { Button, Card, CardContent, CardHeader } from '@/components/ui/primitives';
 
 function StatusBadge({ status }: { status: string }) {
@@ -37,10 +38,11 @@ function DashboardContent() {
   if (!user) return null;
 
   return (
-    <div className="relative min-h-screen overflow-hidden">
+    <div className="relative min-h-screen overflow-x-clip">
       <div className="bg-grid pointer-events-none absolute inset-0 opacity-60 [mask-image:radial-gradient(ellipse_60%_50%_at_50%_-10%,black,transparent)]" />
+      <div className="bg-radial-fade pointer-events-none absolute inset-0" />
 
-      <header className="relative z-10 mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-5">
+      <AppHeader>
         <Link href="/" className="flex items-center gap-2.5">
           <div className="flex size-9 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-violet-600 shadow-lg shadow-primary/25">
             <ShieldCheck className="size-5 text-white" aria-hidden="true" />
@@ -50,11 +52,14 @@ function DashboardContent() {
           </span>
         </Link>
         <AuthNav />
-      </header>
+      </AppHeader>
 
-      <main className="relative z-10 mx-auto w-full max-w-6xl px-6 pb-24">
-        <section className="pt-10">
+      <main className="relative z-10 mx-auto w-full max-w-6xl px-6 pb-28">
+        <section className="pt-12">
           <div className="flex flex-wrap items-center gap-3">
+            <span className="flex size-10 items-center justify-center rounded-xl border bg-gradient-to-br from-primary/10 to-violet-500/10">
+              <ShieldCheck className="size-5 text-primary" aria-hidden="true" />
+            </span>
             <h1 className="text-3xl font-semibold tracking-tight">
               Welcome, <span className="text-gradient">{user.email}</span>
             </h1>
@@ -67,7 +72,7 @@ function DashboardContent() {
           </p>
         </section>
 
-        <section className="mt-10 grid gap-4 lg:grid-cols-3">
+        <section className="mt-8 grid gap-4 lg:grid-cols-3">
           <Card className="lg:col-span-2">
             <CardHeader>
               <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight">

@@ -1,4 +1,3 @@
-import type { Request } from 'express';
 import { randomBytes } from 'node:crypto';
 import {
   generateAuthenticationOptions,
@@ -33,7 +32,9 @@ import {
   getUserAgent,
   safeEqual,
   sha256,
+  type HttpRequestContext,
 } from '@secureauthx/shared';
+import type { Cache } from '../config/cache';
 import type {
   AuditRepository,
   MfaRepository,
@@ -50,6 +51,8 @@ interface MfaServiceDeps {
   mfa: MfaRepository;
   audits: AuditRepository;
   cipher: AtRestCipher;
+  /** TTL cache backing login challenges and WebAuthn ceremonies. */
+  cache: Cache;
 }
 
 /** Server-side state backing a pending second-factor login. */
@@ -74,30 +77,27 @@ interface WebAuthnCeremonyState {
 }
 
 /**
- * TTL store for short-lived MFA state. Single-process by design (the app is
- * self-hosted single-instance); swap for Redis when horizontally scaled.
+ * TTL store for short-lived MFA state. Backed by the shared cache (Upstash on
+ * Workers, in-memory fallback locally) so pending challenges survive Worker
+ * isolates instead of living in process memory.
  */
-class TtlStore<T extends { createdAt: number }> {
-  private readonly items = new Map<string, { data: T; expiresAt: number }>();
+class TtlStore<T> {
+  constructor(
+    private readonly cache: Cache,
+    private readonly ttlMs: number,
+    private readonly prefix: string
+  ) {}
 
-  constructor(private readonly ttlMs: number) {}
-
-  set(id: string, data: T): void {
-    this.items.set(id, { data, expiresAt: Date.now() + this.ttlMs });
+  async set(id: string, data: T): Promise<void> {
+    await this.cache.set(`${this.prefix}:${id}`, data, Math.ceil(this.ttlMs / 1000));
   }
 
-  get(id: string): T | null {
-    const item = this.items.get(id);
-    if (!item) return null;
-    if (item.expiresAt < Date.now()) {
-      this.items.delete(id);
-      return null;
-    }
-    return item.data;
+  async get(id: string): Promise<T | null> {
+    return this.cache.get<T>(`${this.prefix}:${id}`);
   }
 
-  delete(id: string): void {
-    this.items.delete(id);
+  async delete(id: string): Promise<void> {
+    await this.cache.del(`${this.prefix}:${id}`);
   }
 }
 
@@ -108,10 +108,21 @@ const AUTHENTICATION_TIMEOUT_MS = 60000;
  * recovery codes, WebAuthn ceremonies, trusted devices, and disabling.
  */
 export class MfaService {
-  private readonly loginChallenges = new TtlStore<LoginChallengeState>(env.MFA_CHALLENGE_TTL * 1000);
-  private readonly ceremonies = new TtlStore<WebAuthnCeremonyState>(env.MFA_CHALLENGE_TTL * 1000);
+  private readonly loginChallenges: TtlStore<LoginChallengeState>;
+  private readonly ceremonies: TtlStore<WebAuthnCeremonyState>;
 
-  constructor(private readonly deps: MfaServiceDeps) {}
+  constructor(private readonly deps: MfaServiceDeps) {
+    this.loginChallenges = new TtlStore<LoginChallengeState>(
+      deps.cache,
+      env.MFA_CHALLENGE_TTL * 1000,
+      'mfa:login-challenge'
+    );
+    this.ceremonies = new TtlStore<WebAuthnCeremonyState>(
+      deps.cache,
+      env.MFA_CHALLENGE_TTL * 1000,
+      'mfa:ceremony'
+    );
+  }
 
   // -------------------------------------------------------------------------
   // Challenge lifecycle (login gate)
@@ -130,7 +141,7 @@ export class MfaService {
     availableMethods.push('recovery');
 
     const challengeId = generateUuid();
-    this.loginChallenges.set(challengeId, {
+    await this.loginChallenges.set(challengeId, {
       userId,
       rememberMe,
       availableMethods,
@@ -146,8 +157,8 @@ export class MfaService {
   }
 
   /** Resolves the user bound to a pending challenge, or throws. */
-  private getChallengeUser(challengeId: string): string {
-    const state = this.loginChallenges.get(challengeId);
+  private async getChallengeUser(challengeId: string): Promise<string> {
+    const state = await this.loginChallenges.get(challengeId);
     if (!state) {
       throw Errors.unauthorized('MFA challenge is invalid or has expired.');
     }
@@ -162,9 +173,9 @@ export class MfaService {
     challengeId: string,
     code: string,
     rememberDevice: boolean,
-    req: Request
+    req: HttpRequestContext
   ): Promise<{ userId: string; deviceToken: string | null }> {
-    const userId = this.getChallengeUser(challengeId);
+    const userId = await this.getChallengeUser(challengeId);
 
     const record = await this.deps.mfa.getTotpSecret(userId);
     if (!record) {
@@ -194,7 +205,7 @@ export class MfaService {
       throw Errors.unauthorized('Invalid authentication code.');
     }
 
-    this.loginChallenges.delete(challengeId);
+    await this.loginChallenges.delete(challengeId);
     const deviceToken = rememberDevice ? await this.trustDevice(userId, req) : null;
     return { userId, deviceToken };
   }
@@ -203,8 +214,8 @@ export class MfaService {
   // Login verification — recovery codes
   // -------------------------------------------------------------------------
 
-  async verifyRecoveryLogin(challengeId: string, code: string, req: Request): Promise<string> {
-    const userId = this.getChallengeUser(challengeId);
+  async verifyRecoveryLogin(challengeId: string, code: string, req: HttpRequestContext): Promise<string> {
+    const userId = await this.getChallengeUser(challengeId);
 
     const normalized = code.toLowerCase().replace(/[^a-z0-9]/g, '');
     const consumed = await this.deps.mfa.consumeRecoveryCode(userId, sha256(normalized));
@@ -216,7 +227,7 @@ export class MfaService {
       throw Errors.unauthorized('Invalid recovery code.');
     }
 
-    this.loginChallenges.delete(challengeId);
+    await this.loginChallenges.delete(challengeId);
     await this.deps.audits.log(userId, AUDIT_ACTION.RECOVERY_CODE_USED, 'INFO', req);
     return userId;
   }
@@ -228,7 +239,7 @@ export class MfaService {
   async beginWebAuthnLogin(
     challengeId: string
   ): Promise<{ options: PublicKeyCredentialRequestOptionsJSON }> {
-    const userId = this.getChallengeUser(challengeId);
+    const userId = await this.getChallengeUser(challengeId);
     const credentials = await this.deps.mfa.listCredentials(userId);
 
     const options = await generateAuthenticationOptions({
@@ -241,7 +252,7 @@ export class MfaService {
       userVerification: 'discouraged',
     });
 
-    this.ceremonies.set(challengeId, {
+    await this.ceremonies.set(challengeId, {
       kind: 'authenticate',
       userId,
       loginChallengeId: challengeId,
@@ -258,10 +269,10 @@ export class MfaService {
     challengeId: string,
     credential: AuthenticationResponseJSON,
     rememberDevice: boolean,
-    req: Request
+    req: HttpRequestContext
   ): Promise<{ userId: string; deviceToken: string | null }> {
-    const userId = this.getChallengeUser(challengeId);
-    const ceremony = this.ceremonies.get(challengeId);
+    const userId = await this.getChallengeUser(challengeId);
+    const ceremony = await this.ceremonies.get(challengeId);
     if (!ceremony || ceremony.kind !== 'authenticate') {
       throw Errors.unauthorized('MFA challenge is invalid or has expired.');
     }
@@ -307,8 +318,8 @@ export class MfaService {
     }
 
     await this.deps.mfa.updateCredentialCounter(stored.credentialId, verification.authenticationInfo.newCounter);
-    this.ceremonies.delete(challengeId);
-    this.loginChallenges.delete(challengeId);
+    await this.ceremonies.delete(challengeId);
+    await this.loginChallenges.delete(challengeId);
 
     const deviceToken = rememberDevice ? await this.trustDevice(userId, req) : null;
     return { userId, deviceToken };
@@ -337,7 +348,7 @@ export class MfaService {
     };
   }
 
-  async completeTotpEnrollment(userId: string, code: string, req: Request): Promise<string[]> {
+  async completeTotpEnrollment(userId: string, code: string, req: HttpRequestContext): Promise<string[]> {
     const record = await this.deps.mfa.getTotpSecret(userId);
     if (!record) {
       throw Errors.badRequest('Start TOTP setup before verifying a code.');
@@ -387,7 +398,7 @@ export class MfaService {
     });
 
     const challengeId = generateUuid();
-    this.ceremonies.set(challengeId, {
+    await this.ceremonies.set(challengeId, {
       kind: 'register',
       userId,
       expectedChallenge: options.challenge,
@@ -404,9 +415,9 @@ export class MfaService {
     userId: string,
     deviceName: string,
     registration: RegistrationResponseJSON,
-    req: Request
+    req: HttpRequestContext
   ): Promise<string[]> {
-    const ceremony = this.ceremonies.get(challengeId);
+    const ceremony = await this.ceremonies.get(challengeId);
     if (!ceremony || ceremony.kind !== 'register') {
       throw Errors.badRequest('Registration session is invalid or has expired.');
     }
@@ -443,7 +454,7 @@ export class MfaService {
       credentialId: credential.id,
     });
 
-    this.ceremonies.delete(challengeId);
+    await this.ceremonies.delete(challengeId);
     return this.ensureRecoveryCodes(userId, req);
   }
 
@@ -452,7 +463,7 @@ export class MfaService {
   // -------------------------------------------------------------------------
 
   /** Issues a fresh batch of recovery codes only when the user has none left. */
-  private async ensureRecoveryCodes(userId: string, req: Request): Promise<string[]> {
+  private async ensureRecoveryCodes(userId: string, req: HttpRequestContext): Promise<string[]> {
     const remaining = await this.deps.mfa.countUnusedRecoveryCodes(userId);
     if (remaining > 0) return [];
 
@@ -460,7 +471,7 @@ export class MfaService {
   }
 
   /** Re-issues recovery codes after re-verifying the account password. */
-  async regenerateRecoveryCodesWithPassword(userId: string, password: string, req: Request): Promise<string[]> {
+  async regenerateRecoveryCodesWithPassword(userId: string, password: string, req: HttpRequestContext): Promise<string[]> {
     const user = await this.deps.users.findById(userId);
     if (!user) throw Errors.notFound('User not found.');
 
@@ -472,7 +483,7 @@ export class MfaService {
     return this.regenerateRecoveryCodes(userId, req);
   }
 
-  async regenerateRecoveryCodes(userId: string, req: Request): Promise<string[]> {
+  async regenerateRecoveryCodes(userId: string, req: HttpRequestContext): Promise<string[]> {
     const codes: string[] = [];
     const hashes: string[] = [];
     for (let i = 0; i < MFA_CONFIG.RECOVERY_CODES_COUNT; i += 1) {
@@ -521,7 +532,7 @@ export class MfaService {
     };
   }
 
-  async removeWebAuthnCredential(userId: string, credentialId: string, req: Request): Promise<void> {
+  async removeWebAuthnCredential(userId: string, credentialId: string, req: HttpRequestContext): Promise<void> {
     const exists = await this.deps.mfa.getCredentialForUser(userId, credentialId);
     if (!exists) throw Errors.notFound('Security key not found.');
 
@@ -538,7 +549,7 @@ export class MfaService {
   }
 
   /** Disables every MFA method after re-verifying the account password. */
-  async disable(userId: string, password: string, req: Request): Promise<void> {
+  async disable(userId: string, password: string, req: HttpRequestContext): Promise<void> {
     const user = await this.deps.users.findById(userId);
     if (!user) throw Errors.notFound('User not found.');
 
@@ -571,7 +582,7 @@ export class MfaService {
   // Trusted devices
   // -------------------------------------------------------------------------
 
-  private async trustDevice(userId: string, req: Request): Promise<string> {
+  private async trustDevice(userId: string, req: HttpRequestContext): Promise<string> {
     const token = generateSecureToken(32);
     const ip = getClientIp(req);
     await this.deps.mfa.trustDevice({
@@ -586,7 +597,7 @@ export class MfaService {
   }
 
   /** Returns true when the request's trusted-device cookie maps to a stored device. */
-  async isDeviceTrusted(userId: string, req: Request): Promise<boolean> {
+  async isDeviceTrusted(userId: string, req: HttpRequestContext): Promise<boolean> {
     const token = req.cookies?.[COOKIE_NAMES.TRUSTED_DEVICE];
     if (typeof token !== 'string' || token.length === 0) return false;
 
@@ -598,7 +609,7 @@ export class MfaService {
   }
 
   /** Validates that the request's challenge cookie matches the body challengeId. */
-  challengeCookieMatches(req: Request, challengeId: string): boolean {
+  challengeCookieMatches(req: HttpRequestContext, challengeId: string): boolean {
     const cookie = req.cookies?.[COOKIE_NAMES.MFA_CHALLENGE];
     if (typeof cookie !== 'string') return false;
     return safeEqual(cookie, challengeId);

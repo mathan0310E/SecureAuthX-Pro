@@ -49,7 +49,10 @@ export const envSchema = z.object({
   // Cache
   REDIS_PORT: numberFromString(6379),
   REDIS_PASSWORD: z.string().default(''),
-  REDIS_URL: z.string().min(1, 'REDIS_URL is required'),
+  /** Upstash REST endpoint (https://...); empty means no external cache (in-memory fallback). */
+  REDIS_URL: urlFromString(''),
+  /** Upstash REST token — only required when REDIS_URL is an Upstash endpoint. */
+  REDIS_TOKEN: z.string().default(''),
 
   // JWT
   JWT_ACCESS_SECRET: z
@@ -103,6 +106,8 @@ export const envSchema = z.object({
   SMTP_USER: z.string().default(''),
   SMTP_PASSWORD: z.string().default(''),
   SMTP_FROM: z.string().default('SecureAuthX Pro <no-reply@secureauthx.local>'),
+  MAIL_PROVIDER: z.enum(['console', 'resend']).default('console'),
+  RESEND_API_KEY: z.string().default(''),
   EMAIL_VERIFICATION_TTL: numberFromString(86400),
   PASSWORD_RESET_TTL: numberFromString(900),
 
