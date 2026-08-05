@@ -22,7 +22,7 @@ export const metadata: Metadata = {
   applicationName: 'SecureAuthX Pro',
   keywords: ['MFA', 'authentication', 'WebAuthn', 'passkeys', 'TOTP', 'security', 'IAM'],
   authors: [{ name: 'SecureAuthX Pro' }],
-  metadataBase: new URL(process.env.WEB_URL ?? 'http://localhost:3000'),
+  metadataBase: new URL(process.env.WEB_URL || 'http://localhost:3000'),
   openGraph: {
     type: 'website',
     title: 'SecureAuthX Pro — Enterprise MFA Platform',
