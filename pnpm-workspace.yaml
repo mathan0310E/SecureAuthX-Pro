@@ -6,18 +6,15 @@ packages:
 allowBuilds:
   esbuild: true
   workerd: true
+  prisma: true
+  "@prisma/client": true
+  "@prisma/engines": true
+  "@prisma/query-engine-wasm": true
+  bcrypt: true
+  sharp: true
+  unrs-resolver: true
 
 minimumReleaseAgeExclude:
   - '@cloudflare/workers-types@5.20260801.1'
   - miniflare@5.20260730.0-alpha
   - wrangler@4.118.0
-
-onlyBuiltDependencies:
-  - "@prisma/client"
-  - "@prisma/engines"
-  - "@prisma/query-engine-wasm"
-  - "bcrypt"
-  - "esbuild"
-  - "prisma"
-  - "sharp"
-  - "unrs-resolver"
