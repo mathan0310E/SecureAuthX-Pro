@@ -53,6 +53,11 @@ jobs:
           WEB_URL: ${{ secrets.WEB_URL }}
         run: pnpm dlx vercel@latest build --yes --prod --token=$VERCEL_TOKEN
 
+      - name: Verify functions built
+        run: |
+          FUNCS=$(find . -path '*/node_modules' -prune -o -type d -path '*/output/functions' -print | head -1)
+          if [ -n "$FUNCS" ]; then echo "Functions at: $FUNCS"; else echo "ERROR: no functions built"; exit 1; fi
+
       - name: Deploy to Production
         run: pnpm dlx vercel@latest deploy --prebuilt --yes --prod --token=$VERCEL_TOKEN
 
@@ -87,6 +92,11 @@ jobs:
 
       - name: Build
         run: pnpm dlx vercel@latest build --yes --prod --token=$VERCEL_TOKEN
+
+      - name: Verify functions built
+        run: |
+          FUNCS=$(find . -path '*/node_modules' -prune -o -type d -path '*/output/functions' -print | head -1)
+          if [ -n "$FUNCS" ]; then echo "Functions at: $FUNCS"; else echo "ERROR: no functions built"; exit 1; fi
 
       - name: Deploy to Production
         run: pnpm dlx vercel@latest deploy --prebuilt --yes --prod --token=$VERCEL_TOKEN
