@@ -12,6 +12,9 @@ const inter = Inter({
   display: 'swap',
 });
 
+const rawWebUrl = process.env.WEB_URL || 'http://localhost:3000';
+const webUrl = /^https?:\/\//i.test(rawWebUrl) ? rawWebUrl : `https://${rawWebUrl}`;
+
 export const metadata: Metadata = {
   title: {
     default: 'SecureAuthX Pro — Enterprise MFA Platform',
@@ -22,7 +25,7 @@ export const metadata: Metadata = {
   applicationName: 'SecureAuthX Pro',
   keywords: ['MFA', 'authentication', 'WebAuthn', 'passkeys', 'TOTP', 'security', 'IAM'],
   authors: [{ name: 'SecureAuthX Pro' }],
-  metadataBase: new URL(process.env.WEB_URL || 'http://localhost:3000'),
+  metadataBase: new URL(webUrl),
   openGraph: {
     type: 'website',
     title: 'SecureAuthX Pro — Enterprise MFA Platform',
