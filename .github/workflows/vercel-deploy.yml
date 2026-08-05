@@ -44,6 +44,9 @@ jobs:
       - name: Pull project env
         run: pnpm dlx vercel@latest pull --yes --environment=production --token=$VERCEL_TOKEN
 
+      - name: Debug pulled env (temporary)
+        run: cat .vercel/.env.production.local
+
       - name: Build
         run: pnpm dlx vercel@latest build --yes --prod --token=$VERCEL_TOKEN
 
