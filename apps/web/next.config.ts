@@ -5,7 +5,8 @@ import type { NextConfig } from 'next';
  * All auth cookies are set against the Next.js origin so they flow
  * seamlessly and CSRF double-submit works without CORS preflight.
  */
-const apiUrl = process.env.API_URL || 'http://localhost:4000';
+const rawApiUrl = process.env.API_URL || 'http://localhost:4000';
+const apiUrl = /^https?:\/\//i.test(rawApiUrl) ? rawApiUrl : `https://${rawApiUrl}`;
 const isProd = process.env.NODE_ENV === 'production';
 
 const nextConfig: NextConfig = {

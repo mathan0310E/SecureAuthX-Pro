@@ -42,15 +42,12 @@ jobs:
         run: pnpm --filter @secureauthx/database exec prisma generate
 
       - name: Pull project env
-        working-directory: apps/web
         run: pnpm dlx vercel@latest pull --yes --environment=production --token=$VERCEL_TOKEN
 
       - name: Build
-        working-directory: apps/web
         run: pnpm dlx vercel@latest build --yes --prod --token=$VERCEL_TOKEN
 
       - name: Deploy to Production
-        working-directory: apps/web
         run: pnpm dlx vercel@latest deploy --prebuilt --yes --prod --token=$VERCEL_TOKEN
 
   deploy-api:
@@ -80,13 +77,10 @@ jobs:
         run: pnpm --filter @secureauthx/database exec prisma generate
 
       - name: Pull project env
-        working-directory: apps/api
         run: pnpm dlx vercel@latest pull --yes --environment=production --token=$VERCEL_TOKEN
 
       - name: Build
-        working-directory: apps/api
         run: pnpm dlx vercel@latest build --yes --prod --token=$VERCEL_TOKEN
 
       - name: Deploy to Production
-        working-directory: apps/api
         run: pnpm dlx vercel@latest deploy --prebuilt --yes --prod --token=$VERCEL_TOKEN
