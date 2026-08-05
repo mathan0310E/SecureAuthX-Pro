@@ -39,7 +39,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Generate Prisma client
-        run: pnpm exec prisma generate --schema=packages/database/prisma/schema.prisma
+        run: pnpm --filter @secureauthx/database exec prisma generate
 
       - name: Pull project env
         working-directory: apps/web
@@ -77,7 +77,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Generate Prisma client
-        run: pnpm exec prisma generate --schema=packages/database/prisma/schema.prisma
+        run: pnpm --filter @secureauthx/database exec prisma generate
 
       - name: Pull project env
         working-directory: apps/api
