@@ -106,7 +106,7 @@ export const envSchema = z.object({
   SMTP_USER: z.string().default(''),
   SMTP_PASSWORD: z.string().default(''),
   SMTP_FROM: z.string().default('SecureAuthX Pro <no-reply@secureauthx.local>'),
-  MAIL_PROVIDER: z.enum(['console', 'resend']).default('console'),
+  MAIL_PROVIDER: z.enum(['console', 'resend', 'smtp']).default('console'),
   RESEND_API_KEY: z.string().default(''),
   EMAIL_VERIFICATION_TTL: numberFromString(86400),
   PASSWORD_RESET_TTL: numberFromString(900),

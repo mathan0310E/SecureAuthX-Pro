@@ -15,7 +15,11 @@
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
+    "@types/nodemailer": "^8.0.1",
     "typescript": "^5.7.2"
   },
-  "type": "module"
+  "type": "module",
+  "dependencies": {
+    "nodemailer": "^9.0.4"
+  }
 }

@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
 import { parseEnv } from '@secureauthx/config';
 import bcrypt from 'bcrypt';
 
@@ -9,7 +10,8 @@ import bcrypt from 'bcrypt';
  */
 async function main(): Promise<void> {
   const { env } = parseEnv(process.env);
-  const db = new PrismaClient();
+  const adapter = new PrismaPg({ connectionString: env.DATABASE_URL });
+  const db = new PrismaClient({ adapter });
 
   try {
     const passwordHash = await bcrypt.hash(env.ADMIN_PASSWORD, env.BCRYPT_ROUNDS);

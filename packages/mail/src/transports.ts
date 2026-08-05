@@ -1,3 +1,5 @@
+import nodemailer, { type Transporter } from 'nodemailer';
+
 export interface MailMessage {
   from: string;
   to: string;
@@ -8,8 +10,9 @@ export interface MailMessage {
 
 /**
  * A mail transport is a tiny pluggable interface. Cloudflare Workers cannot
- * open raw SMTP sockets, so production delivery uses a REST provider
- * (Resend by default) while local development uses the console transport.
+ * open raw SMTP sockets, so edge delivery uses a REST provider (Resend);
+ * the Node API host can also deliver over real SMTP (nodemailer) or log to
+ * the console for local development.
  */
 export interface MailTransport {
   readonly name: string;
@@ -18,6 +21,44 @@ export interface MailTransport {
 
 export interface ConsoleTransportOptions {
   log(message: string): void;
+}
+
+export interface SmtpTransportOptions {
+  host: string;
+  port: number;
+  secure: boolean;
+  user: string;
+  password: string;
+}
+
+/**
+ * Real-world SMTP transport — sends via a transactional SMTP server using
+ * nodemailer. Node-only (cannot run on edge runtimes, which lack raw sockets).
+ */
+export class SmtpMailTransport implements MailTransport {
+  readonly name = 'smtp';
+  private readonly transporter: Transporter;
+
+  constructor(options: SmtpTransportOptions) {
+    this.transporter = nodemailer.createTransport({
+      host: options.host,
+      port: options.port,
+      secure: options.secure,
+      auth: options.user
+        ? { user: options.user, pass: options.password }
+        : undefined,
+    });
+  }
+
+  async send(message: MailMessage): Promise<void> {
+    await this.transporter.sendMail({
+      from: message.from,
+      to: message.to,
+      subject: message.subject,
+      html: message.html,
+      text: message.text,
+    });
+  }
 }
 
 /** Development transport — writes the rendered message to the logger. */

@@ -61,6 +61,16 @@ export function buildContainer(prisma: PrismaClient, cache: Cache): Container {
     webUrl: env.WEB_URL,
     provider: env.MAIL_PROVIDER,
     resendApiKey: env.RESEND_API_KEY || undefined,
+    smtp:
+      env.MAIL_PROVIDER === 'smtp'
+        ? {
+            host: env.SMTP_HOST,
+            port: env.SMTP_PORT,
+            secure: env.SMTP_SECURE,
+            user: env.SMTP_USER,
+            password: env.SMTP_PASSWORD,
+          }
+        : undefined,
     logger: createChildLogger('mail'),
   });
 

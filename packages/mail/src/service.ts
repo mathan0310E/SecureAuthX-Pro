@@ -1,7 +1,14 @@
 import { buildPasswordResetEmail, buildVerificationEmail } from './templates';
-import { ConsoleMailTransport, ResendMailTransport, type MailMessage, type MailTransport } from './transports';
+import {
+  ConsoleMailTransport,
+  ResendMailTransport,
+  SmtpMailTransport,
+  type MailMessage,
+  type MailTransport,
+  type SmtpTransportOptions,
+} from './transports';
 
-export type MailProvider = 'console' | 'resend';
+export type MailProvider = 'console' | 'resend' | 'smtp';
 
 export interface MailLogger {
   info(msg: string, meta?: Record<string, unknown>): void;
@@ -12,10 +19,12 @@ export interface MailServiceConfig {
   from: string;
   appName: string;
   webUrl: string;
-  /** Delivery provider. `console` (default) logs messages; `resend` uses the REST API. */
+  /** Delivery provider. `console` (default) logs messages; `resend` uses the REST API; `smtp` uses a real SMTP server (Node host only). */
   provider?: MailProvider;
   /** Resend API key — required when `provider: 'resend'`. */
   resendApiKey?: string;
+  /** SMTP server settings — required when `provider: 'smtp'`. */
+  smtp?: SmtpTransportOptions;
   logger?: MailLogger;
 }
 
@@ -26,6 +35,12 @@ function createTransport(config: MailServiceConfig): MailTransport {
     }
     return new ResendMailTransport({ apiKey: config.resendApiKey });
   }
+  if (config.provider === 'smtp') {
+    if (!config.smtp) {
+      throw new Error('MailService: provider "smtp" requires smtp options.');
+    }
+    return new SmtpMailTransport(config.smtp);
+  }
   return new ConsoleMailTransport({
     log: (line) => config.logger?.info(line) ?? console.info(line),
   });
@@ -33,9 +48,9 @@ function createTransport(config: MailServiceConfig): MailTransport {
 
 /**
  * Transactional email delivery over a pluggable transport (console in dev,
- * Resend REST in production). Failures are never thrown to callers — a
- * warning is logged instead so a mailbox outage cannot block registration
- * or other critical flows.
+ * Resend REST or real SMTP in production). Failures are never thrown to
+ * callers — a warning is logged instead so a mailbox outage cannot block
+ * registration or other critical flows.
  */
 export class MailService {
   private readonly transport: MailTransport;

@@ -1,5 +1,5 @@
 import { Prisma, PrismaClient } from '@prisma/client';
-import type { PrismaPg } from '@prisma/adapter-pg';
+import { PrismaPg } from '@prisma/adapter-pg';
 import type { Env } from '@secureauthx/config';
 import { createPrismaClient } from './client';
 
@@ -40,4 +40,14 @@ export function getPrismaClient(env: PrismaEnv, adapter?: PrismaPg): PrismaClien
     globalThis.prisma = createPrismaClient(env, adapter);
   }
   return globalThis.prisma;
+}
+
+/**
+ * Creates (or reuses) the singleton PrismaClient wired to the pure-JS
+ * PostgreSQL driver adapter. No native query-engine binary is required,
+ * which makes this the safe path for Vercel serverless functions and any
+ * sandboxed runtime that cannot ship the Prisma engine.
+ */
+export function createPrismaPgClient(env: PrismaEnv, connectionString: string): PrismaClient {
+  return getPrismaClient(env, new PrismaPg({ connectionString }));
 }

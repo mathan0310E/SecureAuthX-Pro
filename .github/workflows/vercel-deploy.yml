@@ -1,4 +1,4 @@
-name: Deploy Web App to Vercel
+name: Deploy to Vercel
 
 on:
   push:
@@ -6,39 +6,87 @@ on:
       - main
   workflow_dispatch:
 
+concurrency:
+  group: vercel-deploy
+  cancel-in-progress: true
+
 env:
   VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+  VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
 
 jobs:
-  deploy:
+  deploy-web:
+    name: Deploy Web
     runs-on: ubuntu-latest
+    env:
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_WEB }}
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.11.0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: 'pnpm'
-
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: '10'
+          cache: pnpm
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build web app
-        run: pnpm --filter @secureauthx/web build
+      - name: Generate Prisma client
+        run: pnpm exec prisma generate --schema=packages/database/prisma/schema.prisma
 
-      - name: Deploy to Vercel
-        uses: amondnet/vercel-action@v30
+      - name: Pull project env
+        working-directory: apps/web
+        run: pnpm dlx vercel@latest pull --yes --environment=production --token=$VERCEL_TOKEN
+
+      - name: Build
+        working-directory: apps/web
+        run: pnpm dlx vercel@latest build --yes --token=$VERCEL_TOKEN
+
+      - name: Deploy to Production
+        working-directory: apps/web
+        run: pnpm dlx vercel@latest deploy --prebuilt --yes --prod --token=$VERCEL_TOKEN
+
+  deploy-api:
+    name: Deploy API
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_API }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ env.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ env.VERCEL_PROJECT_ID }}
-          vercel-args: "--prod"
+          version: 11.11.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm exec prisma generate --schema=packages/database/prisma/schema.prisma
+
+      - name: Pull project env
+        working-directory: apps/api
+        run: pnpm dlx vercel@latest pull --yes --environment=production --token=$VERCEL_TOKEN
+
+      - name: Build
+        working-directory: apps/api
+        run: pnpm dlx vercel@latest build --yes --token=$VERCEL_TOKEN
+
+      - name: Deploy to Production
+        working-directory: apps/api
+        run: pnpm dlx vercel@latest deploy --prebuilt --yes --prod --token=$VERCEL_TOKEN

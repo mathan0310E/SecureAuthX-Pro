@@ -18,11 +18,15 @@ async function bootstrap(): Promise<void> {
   await prisma.$queryRaw`SELECT 1`;
   logger.info('Database connection verified.');
 
+  // Platforms (Render, Vercel, Heroku) inject the listening port via PORT;
+  // fall back to the validated env default for local development.
+  const port = Number(process.env.PORT) || env.API_PORT;
+
   server = serve(
-    { fetch: app.fetch, port: env.API_PORT, hostname: env.API_BIND_ADDRESS },
+    { fetch: app.fetch, port, hostname: env.API_BIND_ADDRESS },
     () => {
       logger.info(
-        `${env.APP_NAME} listening on http://${env.API_BIND_ADDRESS}:${env.API_PORT} (${env.NODE_ENV})`
+        `${env.APP_NAME} listening on http://${env.API_BIND_ADDRESS}:${port} (${env.NODE_ENV})`
       );
     }
   );
