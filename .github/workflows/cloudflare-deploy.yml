@@ -113,10 +113,11 @@ jobs:
       # NOTE: wrangler-action cannot be used here - it installs wrangler via
       # `npm i` inside apps/api, which fails because apps/api depends on
       # workspace:* packages (npm error EUNSUPPORTEDPROTOCOL). Run wrangler
-      # directly via npx instead (same v4 major validated locally with dry-run).
+      # directly via pnpm dlx instead (npx fails to fetch on this runner;
+      # pnpm dlx validated locally with the dry-run, same v4 major).
       - name: Deploy API to Cloudflare Workers
         working-directory: apps/api
-        run: npx wrangler@4 deploy
+        run: pnpm dlx wrangler@4 deploy
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -124,10 +125,10 @@ jobs:
       - name: Set API worker secrets
         working-directory: apps/api
         run: |
-          printf %s "$DATABASE_URL" | npx wrangler@4 secret put DATABASE_URL
-          printf %s "$JWT_ACCESS_SECRET" | npx wrangler@4 secret put JWT_ACCESS_SECRET
-          printf %s "$JWT_REFRESH_SECRET" | npx wrangler@4 secret put JWT_REFRESH_SECRET
-          printf %s "$ENCRYPTION_KEY" | npx wrangler@4 secret put ENCRYPTION_KEY
+          printf %s "$DATABASE_URL" | pnpm dlx wrangler@4 secret put DATABASE_URL
+          printf %s "$JWT_ACCESS_SECRET" | pnpm dlx wrangler@4 secret put JWT_ACCESS_SECRET
+          printf %s "$JWT_REFRESH_SECRET" | pnpm dlx wrangler@4 secret put JWT_REFRESH_SECRET
+          printf %s "$ENCRYPTION_KEY" | pnpm dlx wrangler@4 secret put ENCRYPTION_KEY
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
