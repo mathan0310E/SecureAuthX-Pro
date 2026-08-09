@@ -18,7 +18,8 @@ export const healthController = {
     try {
       await prisma.$queryRaw`SELECT 1`;
       database = 'up';
-    } catch {
+    } catch (err) {
+      console.error('health: database probe failed', err);
       database = 'down';
     }
 
