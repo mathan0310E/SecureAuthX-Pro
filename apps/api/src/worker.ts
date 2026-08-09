@@ -3,11 +3,31 @@
  * touches `env` at import time (config/prisma, config/cache) evaluates before
  * the binding source is injected via `setEnvSource`.
  */
+
+type Bindings = Record<string, string | undefined>;
+
+interface HyperdriveBinding {
+  connectionString: string;
+}
+
+/**
+ * Applies binding-level overrides before env resolution:
+ * - If a Hyperdrive binding is present, its pooled connection string wins over
+ *   DATABASE_URL. Hyperdrive keeps DB connections warm at the edge, removing
+ *   per-isolate Neon handshakes and pooler pressure entirely.
+ * No-op when the binding is absent, so the same code runs against a plain
+ * DATABASE_URL (local dev, CI, pre-Hyperdrive deploys).
+ */
+function applyBindingOverrides(bindings: Bindings): void {
+  const hyperdrive = (bindings as Record<string, HyperdriveBinding | undefined>).HYPERDRIVE;
+  if (hyperdrive && typeof hyperdrive.connectionString === 'string') {
+    bindings.DATABASE_URL = hyperdrive.connectionString;
+  }
+}
+
 export default {
-  async fetch(
-    request: Request,
-    bindings: Record<string, string | undefined>
-  ): Promise<Response> {
+  async fetch(request: Request, bindings: Bindings): Promise<Response> {
+    applyBindingOverrides(bindings);
     const { setEnvSource } = await import('./config/env');
     setEnvSource(bindings);
 
@@ -24,8 +44,9 @@ export default {
    */
   async scheduled(
     _controller: { scheduledTime: number; cron: string },
-    bindings: Record<string, string | undefined>
+    bindings: Bindings
   ): Promise<void> {
+    applyBindingOverrides(bindings);
     const { setEnvSource } = await import('./config/env');
     setEnvSource(bindings);
 
