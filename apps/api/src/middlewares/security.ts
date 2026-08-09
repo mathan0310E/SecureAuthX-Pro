@@ -1,6 +1,5 @@
 import { secureHeaders } from 'hono/secure-headers';
 import { cors } from 'hono/cors';
-import { compress } from 'hono/compress';
 import type { Hono } from 'hono';
 import { buildSecureHeadersOptions, createRateLimiter } from '@secureauthx/security';
 import { env } from '../config/env';
@@ -10,7 +9,11 @@ import type { AppEnv } from '../types/context';
  * Global security posture for the API gateway:
  * - Security headers (CSP, HSTS, referrer policy, permissions policy)
  * - CORS restricted to configured origins
- * - Response compression
+ *
+ * NOTE: Response compression is intentionally disabled. The web Worker
+ * (Next.js/OpenNext rewrite) proxies /api/* and drops the Content-Encoding
+ * header while forwarding the gzip body, which breaks browser JSON parsing.
+ * Payloads are small; Cloudflare's edge still compresses static assets.
  */
 export function configureSecurity(app: Hono<AppEnv>): void {
   const isProd = env.NODE_ENV === 'production';
@@ -31,8 +34,6 @@ export function configureSecurity(app: Hono<AppEnv>): void {
       maxAge: 86400,
     })
   );
-
-  app.use('*', compress());
 }
 
 /**
