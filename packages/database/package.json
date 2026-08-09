@@ -26,6 +26,8 @@
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@neondatabase/serverless": "^0.10.4",
+    "@prisma/adapter-neon": "6.19.3",
     "@prisma/adapter-pg": "^6.2.1",
     "@prisma/client": "^6.2.1",
     "@secureauthx/config": "workspace:*",
