@@ -8,11 +8,10 @@ import type { Env } from '@secureauthx/config';
  * - `max: 2` — bounds per-isolate connections so we never pressure Neon's
  *   pooler (default pg max is 10 per isolate; many isolates × 10 exceeds
  *   Neon's connection budget and makes connections queue/stall).
- * - `connectionTimeoutMillis: 8000` — a stalled TCP/TLS+SCRAM handshake now
- *   fails fast with a catchable error instead of waiting forever. pg's
- *   default is 0 (never time out), and a never-settling connect promise is
- *   exactly what the Workers runtime kills as "The script will never
- *   generate a response" (1101).
+ * - `connectionTimeoutMillis: 30000` — long enough for Neon to wake a
+ *   suspended compute (free-tier autosuspend wake can take 5–30s). The API
+ *   Worker's ref'd watchdog (with-timeout.ts) bounds the *user-visible* wait
+ *   at 20s, so this only needs to let a wake complete rather than fail fast.
  * - `idleTimeoutMillis: 90000` — kept above the API Worker's keepalive cron
  *   interval (60s) so the warm connection survives between pings and user
  *   requests skip the multi-second Neon handshake.
@@ -21,7 +20,7 @@ export function createPgPool(connectionString: string): Pool {
   const config: PoolConfig = {
     connectionString,
     max: 2,
-    connectionTimeoutMillis: 8_000,
+    connectionTimeoutMillis: 30_000,
     idleTimeoutMillis: 90_000,
   };
   return new Pool(config);

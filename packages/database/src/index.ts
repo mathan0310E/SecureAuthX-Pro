@@ -2,6 +2,7 @@ import { Prisma, PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import type { Env } from '@secureauthx/config';
 import { createPgPool, createPrismaClient } from './client';
+export { guardPrisma, withDbTimeout } from './with-timeout';
 
 export { Prisma, PrismaClient };
 export * from './client';
