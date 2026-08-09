@@ -41,9 +41,7 @@
   // Minute-by-minute DB keepalive ping (see scheduled handler in worker.ts).
   // Keeps the isolate + pg connection warm so requests skip the ~2s Neon
   // handshake; also bounded by connectionTimeoutMillis in createPgPool.
-  "triggers": [
-    {
-      "crons": ["* * * * *"]
-    }
-  ]
+  "triggers": {
+    "crons": ["* * * * *"]
+  }
 }
