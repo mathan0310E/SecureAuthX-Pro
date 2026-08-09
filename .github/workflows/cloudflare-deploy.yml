@@ -1,4 +1,4 @@
-name: Deploy Web App to Cloudflare
+name: Deploy to Cloudflare
 
 on:
   push:
@@ -60,3 +60,89 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: apps/web
           command: deploy
+
+  deploy-api:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Verify required secrets
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          JWT_ACCESS_SECRET: ${{ secrets.JWT_ACCESS_SECRET }}
+          JWT_REFRESH_SECRET: ${{ secrets.JWT_REFRESH_SECRET }}
+          ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
+        run: |
+          missing=""
+          [ -n "$CLOUDFLARE_API_TOKEN" ] || missing="$missing CLOUDFLARE_API_TOKEN"
+          [ -n "$CLOUDFLARE_ACCOUNT_ID" ] || missing="$missing CLOUDFLARE_ACCOUNT_ID"
+          [ -n "$DATABASE_URL" ] || missing="$missing DATABASE_URL"
+          [ -n "$JWT_ACCESS_SECRET" ] || missing="$missing JWT_ACCESS_SECRET"
+          [ -n "$JWT_REFRESH_SECRET" ] || missing="$missing JWT_REFRESH_SECRET"
+          [ -n "$ENCRYPTION_KEY" ] || missing="$missing ENCRYPTION_KEY"
+          if [ -n "$missing" ]; then
+            echo "::error::Missing required secrets:$missing"
+            exit 1
+          fi
+          echo "All required API secrets present."
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Ensure the engineType=client WASM Prisma client is generated before
+      # wrangler bundles the Worker (wrangler resolves the `workerd` export
+      # condition to wasm.js -> wasm-worker-loader.mjs -> query_compiler_bg.wasm).
+      - name: Generate Prisma client
+        run: pnpm --filter @secureauthx/database exec prisma generate
+
+      - name: Deploy API to Cloudflare Workers
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: apps/api
+          # Secret names must match the env vars below; the action runs
+          # `wrangler secret put <name>` for each.
+          secrets: |
+            DATABASE_URL
+            JWT_ACCESS_SECRET
+            JWT_REFRESH_SECRET
+            ENCRYPTION_KEY
+          command: deploy
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          JWT_ACCESS_SECRET: ${{ secrets.JWT_ACCESS_SECRET }}
+          JWT_REFRESH_SECRET: ${{ secrets.JWT_REFRESH_SECRET }}
+          ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
+
+      - name: Verify API health endpoint
+        run: |
+          for i in $(seq 1 12); do
+            code=$(curl -s -o /tmp/api-health.json -w "%{http_code}" \
+              https://secureauthx-pro-api.secureauthx-pro.workers.dev/api/v1/health || true)
+            if [ "$code" = "200" ]; then
+              echo "API healthy:"
+              cat /tmp/api-health.json
+              exit 0
+            fi
+            echo "attempt $i: HTTP $code, retrying in 5s..."
+            sleep 5
+          done
+          echo "::error::API health endpoint did not return 200"
+          cat /tmp/api-health.json 2>/dev/null || true
+          exit 1

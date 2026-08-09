@@ -1,0 +1,41 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "secureauthx-pro-api",
+  "main": "src/worker.ts",
+  "compatibility_date": "2026-07-01",
+  "compatibility_flags": [
+    // Enable Node.js APIs. Required by the `pg` driver (via @prisma/adapter-pg)
+    // to open TCP connections to PostgreSQL over Cloudflare's socket API.
+    "nodejs_compat"
+  ],
+  // Non-secret runtime configuration. Secrets (DATABASE_URL, JWT_ACCESS_SECRET,
+  // JWT_REFRESH_SECRET, ENCRYPTION_KEY) are injected at deploy time via
+  // `wrangler secret put` in the CI workflow.
+  "vars": {
+    "NODE_ENV": "production",
+    "APP_NAME": "SecureAuthX Pro",
+    "APP_DOMAIN": "secureauthx-pro-web.secureauthx-pro.workers.dev",
+    "API_URL": "https://secureauthx-pro-api.secureauthx-pro.workers.dev",
+    "WEB_URL": "https://secureauthx-pro-web.secureauthx-pro.workers.dev",
+    "API_CORS_ORIGINS": "https://secureauthx-pro-web.secureauthx-pro.workers.dev",
+    // The browser only ever talks to the web origin (same-origin /api rewrites),
+    // so auth cookies must be scoped to the web Worker host.
+    "COOKIE_DOMAIN": "secureauthx-pro-web.secureauthx-pro.workers.dev",
+    "COOKIE_SECURE": "true",
+    "COOKIE_SAME_SITE": "lax",
+    // WebAuthn relying party must match the browser origin exactly.
+    "WEBAUTHN_RP_ID": "secureauthx-pro-web.secureauthx-pro.workers.dev",
+    "WEBAUTHN_ORIGIN": "https://secureauthx-pro-web.secureauthx-pro.workers.dev",
+    "WEBAUTHN_RP_NAME": "SecureAuthX Pro",
+    "JWT_ISSUER": "secureauthx-pro",
+    "JWT_AUDIENCE": "secureauthx-pro",
+    // Email: console provider logs verification/reset emails instead of sending
+    // them. Swap to "resend"/"smtp" + credentials once a provider is provided.
+    "MAIL_PROVIDER": "console",
+    "LOG_LEVEL": "info",
+    "LOG_FORMAT": "json"
+  },
+  "observability": {
+    "enabled": true
+  }
+}
