@@ -5,23 +5,24 @@ import type { Env } from '@secureauthx/config';
 
 /**
  * Builds a pg connection pool tuned for serverless/edge runtimes:
- * - `max: 2` — bounds per-isolate connections so we never pressure Neon's
- *   pooler (default pg max is 10 per isolate; many isolates × 10 exceeds
- *   Neon's connection budget and makes connections queue/stall).
+ * - `max: 1` — one connection per isolate. Neon's pooler has a small
+ *   per-role budget; many isolates × multiple connections saturates it and
+ *   new connects QUEUE (stall) instead of failing. One connection per
+ *   isolate keeps concurrent pooler usage near zero.
+ * - `idleTimeoutMillis: 30000` — release the connection quickly after use.
+ *   Long-lived idle connections from resident isolates (kept alive by the
+ *   keepalive cron) were stacking up and exhausting the pooler.
  * - `connectionTimeoutMillis: 30000` — long enough for Neon to wake a
  *   suspended compute (free-tier autosuspend wake can take 5–30s). The API
  *   Worker's ref'd watchdog (with-timeout.ts) bounds the *user-visible* wait
  *   at 20s, so this only needs to let a wake complete rather than fail fast.
- * - `idleTimeoutMillis: 90000` — kept above the API Worker's keepalive cron
- *   interval (60s) so the warm connection survives between pings and user
- *   requests skip the multi-second Neon handshake.
  */
 export function createPgPool(connectionString: string): Pool {
   const config: PoolConfig = {
     connectionString,
-    max: 2,
+    max: 1,
     connectionTimeoutMillis: 30_000,
-    idleTimeoutMillis: 90_000,
+    idleTimeoutMillis: 30_000,
   };
   return new Pool(config);
 }
