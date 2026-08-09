@@ -1,7 +1,7 @@
 import { Prisma, PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import type { Env } from '@secureauthx/config';
-import { createPrismaClient } from './client';
+import { createPgPool, createPrismaClient } from './client';
 
 export { Prisma, PrismaClient };
 export * from './client';
@@ -49,5 +49,5 @@ export function getPrismaClient(env: PrismaEnv, adapter?: PrismaPg): PrismaClien
  * sandboxed runtime that cannot ship the Prisma engine.
  */
 export function createPrismaPgClient(env: PrismaEnv, connectionString: string): PrismaClient {
-  return getPrismaClient(env, new PrismaPg({ connectionString }));
+  return getPrismaClient(env, new PrismaPg(createPgPool(connectionString)));
 }

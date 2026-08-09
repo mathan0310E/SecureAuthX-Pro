@@ -1,7 +1,7 @@
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
 import type { Env } from '@secureauthx/config';
-import { createPrismaClient } from './client';
+import { createPgPool, createPrismaClient } from './client';
 
 /**
  * Creates a PrismaClient wired to `pg` via Prisma's PostgreSQL driver
@@ -13,6 +13,6 @@ export function createPrismaWorkerClient(
   datasourceUrl: string,
   env: Pick<Env, 'NODE_ENV' | 'LOG_LEVEL'>
 ): PrismaClient {
-  const adapter = new PrismaPg({ connectionString: datasourceUrl });
+  const adapter = new PrismaPg(createPgPool(datasourceUrl));
   return createPrismaClient(env, adapter);
 }
